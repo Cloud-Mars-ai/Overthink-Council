@@ -103,8 +103,8 @@
 
 ### 1. 克隆代码并安装依赖
 ```bash
-git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
-cd YOUR_REPO
+git clone https://github.com/Felix77720/Infighting-Commitee.git
+cd Infighting-Commitee
 npm install
 ```
 
