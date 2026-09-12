@@ -211,3 +211,28 @@ export function playBell() {
     osc.stop(now + 0.65 + i * 0.05);
   });
 }
+
+// 8. 机械键盘/打字机微击音 (Mechanical Typewriter Click)
+export function playTypewriterKey() {
+  if (isMuted) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  // 拟真机械按键微撞击声
+  osc.type = "triangle";
+  osc.frequency.setValueAtTime(750 + Math.random() * 350, now);
+  osc.frequency.exponentialRampToValueAtTime(180, now + 0.022);
+
+  gain.gain.setValueAtTime(0.045, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.022);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start(now);
+  osc.stop(now + 0.025);
+}

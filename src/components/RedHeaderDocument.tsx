@@ -1,9 +1,9 @@
-"use client";
-
 import React, { useState } from "react";
 import { CouncilResolution, ProposalPlan } from "@/lib/types";
 import { AGENT_PROFILES } from "@/lib/agents-data";
-import { Copy, Check, Printer, RefreshCw, CheckCircle2, AlertOctagon, Share2 } from "lucide-react";
+import { Copy, Check, Printer, RefreshCw, CheckCircle2, AlertOctagon, Share2, Sparkles, Camera } from "lucide-react";
+import { toPng } from "html-to-image";
+import { SocialPosterModal } from "@/components/SocialPosterModal";
 
 interface RedHeaderDocumentProps {
   resolution: CouncilResolution;
@@ -24,6 +24,9 @@ export const RedHeaderDocument: React.FC<RedHeaderDocumentProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
   const [rejectWarn, setRejectWarn] = useState(false);
+  const [isGeneratingPoster, setIsGeneratingPoster] = useState(false);
+  const [posterUrl, setPosterUrl] = useState<string | null>(null);
+  const [isPosterModalOpen, setIsPosterModalOpen] = useState(false);
 
   const supervisingName =
     AGENT_PROFILES[resolution.supervisingAgent]?.name || "脑内监察特别专员";
@@ -63,6 +66,27 @@ ${resolution.stipulations.map((s, idx) => `（${["一", "二", "三", "四", "�
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleGeneratePoster = async () => {
+    const node = document.getElementById("official-red-header-doc");
+    if (!node) return;
+    setIsGeneratingPoster(true);
+    try {
+      const dataUrl = await toPng(node, {
+        quality: 0.98,
+        pixelRatio: 2,
+        backgroundColor: "#fffdf9",
+        cacheBust: true,
+      });
+      setPosterUrl(dataUrl);
+      setIsPosterModalOpen(true);
+    } catch (err) {
+      console.error("生成海报失败:", err);
+      alert("海报生成失败，请重试或直接使用系统截图！");
+    } finally {
+      setIsGeneratingPoster(false);
+    }
   };
 
   return (
@@ -236,6 +260,17 @@ ${resolution.stipulations.map((s, idx) => `（${["一", "二", "三", "四", "�
             </svg>
           </div>
         </div>
+
+        {/* 海报专属防伪公信水印与裂变底栏 */}
+        <div className="mt-8 pt-4 border-t border-zinc-200/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-zinc-400 font-sans select-none">
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+            <span className="font-serif font-bold text-zinc-600">学园内耗特别审议委员会 · 官方终审裁决令存根</span>
+          </div>
+          <div className="text-right text-zinc-500 font-medium">
+            <span>扫码 / 搜索「学园内耗特别审议委员会」· 审判你的脑内小剧场</span>
+          </div>
+        </div>
       </div>
 
       {/* 拒不执行警告提示 */}
@@ -247,7 +282,26 @@ ${resolution.stipulations.map((s, idx) => `（${["一", "二", "三", "四", "�
 
       {/* 底部交互操作工具栏 */}
       <div className="mt-4 sm:mt-6 flex flex-wrap items-center justify-between gap-2.5 p-3 rounded-2xl bg-[#0c1022]/90 border border-white/[0.08] backdrop-blur-xl">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* 一键生成朋友圈/小红书长图分享海报按钮 */}
+          <button
+            onClick={handleGeneratePoster}
+            disabled={isGeneratingPoster}
+            className="flex items-center gap-1.5 rounded-xl border border-rose-500/50 bg-gradient-to-r from-rose-950/70 via-red-950/60 to-rose-900/60 px-3.5 py-2 text-xs font-bold text-rose-300 shadow-[0_0_20px_rgba(244,63,94,0.3)] transition hover:brightness-110 active:scale-95 disabled:opacity-60"
+          >
+            {isGeneratingPoster ? (
+              <>
+                <RefreshCw className="h-3.5 w-3.5 animate-spin text-rose-400" />
+                <span>正在渲染高清海报...</span>
+              </>
+            ) : (
+              <>
+                <Camera className="h-3.5 w-3.5 text-rose-400" />
+                <span>📸 生成朋友圈/小红书长图</span>
+              </>
+            )}
+          </button>
+
           <button
             onClick={handleCopy}
             className="flex items-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-900/90 px-3.5 py-2 text-xs font-semibold text-zinc-200 transition hover:border-cyan-500 hover:text-white active:scale-95"
@@ -260,7 +314,7 @@ ${resolution.stipulations.map((s, idx) => `（${["一", "二", "三", "四", "�
             ) : (
               <>
                 <Copy className="h-3.5 w-3.5 text-cyan-400" />
-                <span>复制红头公文正文</span>
+                <span>复制公文正文</span>
               </>
             )}
           </button>
@@ -270,7 +324,7 @@ ${resolution.stipulations.map((s, idx) => `（${["一", "二", "三", "四", "�
             className="hidden sm:flex items-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-900/90 px-3.5 py-2 text-xs font-semibold text-zinc-300 transition hover:border-zinc-500 hover:text-white"
           >
             <Printer className="h-3.5 w-3.5" />
-            <span>打印 / 另存为 PDF</span>
+            <span>打印 / PDF</span>
           </button>
         </div>
 
@@ -309,6 +363,14 @@ ${resolution.stipulations.map((s, idx) => `（${["一", "二", "三", "四", "�
           )}
         </div>
       </div>
+
+      {/* 小红书/朋友圈高清长图海报预览弹窗 */}
+      <SocialPosterModal
+        isOpen={isPosterModalOpen}
+        onClose={() => setIsPosterModalOpen(false)}
+        imageUrl={posterUrl}
+        caseTitle={resolution.title}
+      />
     </div>
   );
 };

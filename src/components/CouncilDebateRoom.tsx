@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { CouncilSpeech, AgentId } from "@/lib/types";
 import { AGENT_PROFILES } from "@/lib/agents-data";
-import { playVoteTick, playGavel, playAlarm, playObjection, playTextBlip } from "@/lib/audio";
+import { playVoteTick, playGavel, playAlarm, playObjection, playTextBlip, playTypewriterKey } from "@/lib/audio";
 import { generateInterrogationResponse } from "@/lib/council-engine";
 import { CharacterAvatar } from "@/components/CharacterAvatar";
 import {
@@ -53,6 +53,8 @@ export const CouncilDebateRoom: React.FC<CouncilDebateRoomProps> = ({
   const [isAnswering, setIsAnswering] = useState<boolean>(false);
   const [showObjectionBanner, setShowObjectionBanner] = useState<boolean>(false);
   const [isScreenRumbling, setIsScreenRumbling] = useState<boolean>(false);
+  const [streamedText, setStreamedText] = useState<string>("");
+  const [isTyping, setIsTyping] = useState<boolean>(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -98,9 +100,73 @@ export const CouncilDebateRoom: React.FC<CouncilDebateRoomProps> = ({
     }
   }, [currentIdx, liveSpeeches]);
 
-  // 独立的舒适阅读自动播放计时器（充足留白，避免过快）
+  // 逐字流式打字机效果 (Typewriter Engine + 拟真机械键盘微击音)
   useEffect(() => {
-    if (!autoPlay || isAnswering) return;
+    const sp = liveSpeeches[currentIdx];
+    if (!sp || !sp.content) {
+      setStreamedText("");
+      setIsTyping(false);
+      return;
+    }
+
+    const fullContent = sp.content;
+    let charIdx = 0;
+    setIsTyping(true);
+    setStreamedText("");
+
+    let timeoutId: NodeJS.Timeout;
+
+    const typeNextChar = () => {
+      if (charIdx < fullContent.length) {
+        charIdx++;
+        const nextSubstr = fullContent.slice(0, charIdx);
+        setStreamedText(nextSubstr);
+
+        // 每隔2个汉字敲击一次机械键盘微音效（既有真实击键感又避免刺耳过密）
+        if (charIdx % 2 === 0) {
+          playTypewriterKey();
+        }
+
+        // 针对标点符号提供自然的口语留白微停顿
+        const lastChar = fullContent[charIdx - 1];
+        const isPunctuation = /[，。！？；：、“”…—\n]/.test(lastChar);
+        const baseSpeed = isSlowMode ? 40 : 26;
+        const delay = isPunctuation ? baseSpeed + 60 : baseSpeed;
+
+        timeoutId = setTimeout(typeNextChar, delay);
+      } else {
+        setIsTyping(false);
+      }
+    };
+
+    timeoutId = setTimeout(typeNextChar, 120);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [currentIdx, liveSpeeches, isSlowMode]);
+
+  // 点击对话框快速跳过打字，直接显示整句
+  const handleRevealFullSentence = () => {
+    const sp = liveSpeeches[currentIdx];
+    if (sp && isTyping) {
+      setStreamedText(sp.content);
+      setIsTyping(false);
+    }
+  };
+
+  // 翻到下一句：若还在打字则先展示全句；若已打完则切到下一发言
+  const handleNextSpeech = () => {
+    if (isTyping) {
+      handleRevealFullSentence();
+    } else {
+      setCurrentIdx((prev) => Math.min(liveSpeeches.length - 1, prev + 1));
+    }
+  };
+
+  // 独立的舒适阅读自动播放计时器（打字完成后给予充足阅读留白，从容不迫）
+  useEffect(() => {
+    if (!autoPlay || isAnswering || isTyping) return;
 
     if (currentIdx < liveSpeeches.length - 1) {
       const sp = liveSpeeches[currentIdx];
@@ -110,10 +176,10 @@ export const CouncilDebateRoom: React.FC<CouncilDebateRoomProps> = ({
         sp?.content.includes("反对") ||
         sp?.content.includes("慢着");
 
-      // 智能动态阅读时长：每字 115ms + 基础留白 3800ms，每句至少停留 5.5s ~ 9.5s
+      // 智能阅读留白时长：基础留白 3500ms + 每10字 180ms
       const contentLength = sp?.content?.length || 40;
-      const baseDelay = Math.max(5500, Math.min(9500, contentLength * 115 + 3800));
-      const objectionBonus = isObjection ? 2200 : 0;
+      const baseDelay = Math.max(3500, Math.min(7500, contentLength * 60 + 2600));
+      const objectionBonus = isObjection ? 1800 : 0;
       const delay = Math.round((baseDelay + objectionBonus) * (isSlowMode ? 1.35 : 1.0));
 
       const timer = setTimeout(() => {
@@ -125,7 +191,7 @@ export const CouncilDebateRoom: React.FC<CouncilDebateRoomProps> = ({
 
       return () => clearTimeout(timer);
     }
-  }, [currentIdx, autoPlay, isSlowMode, liveSpeeches.length, isAnswering]);
+  }, [currentIdx, autoPlay, isSlowMode, liveSpeeches.length, isAnswering, isTyping]);
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -371,11 +437,13 @@ export const CouncilDebateRoom: React.FC<CouncilDebateRoomProps> = ({
 
           {/* GALGAME 对话框 (Visual Novel Text Box) */}
           <div
-            className={`relative z-20 w-full rounded-2xl sm:rounded-3xl border-2 p-4 sm:p-5 transition-all duration-300 ${
+            onClick={handleRevealFullSentence}
+            className={`relative z-20 w-full rounded-2xl sm:rounded-3xl border-2 p-4 sm:p-5 transition-all duration-300 cursor-pointer ${
               activeSpeech?.interrupted || activeSpeech?.content.includes("反对") || activeSpeech?.content.includes("异议")
                 ? "border-red-500/80 bg-gradient-to-br from-[#1a0808] to-[#0d091a] shadow-[0_0_40px_rgba(239,68,68,0.35)]"
                 : "border-cyan-500/40 vn-box shadow-[0_0_30px_rgba(6,182,212,0.2)]"
             }`}
+            title={isTyping ? "点击立即显示整句" : "点击推进"}
           >
             {/* 角色姓名栏 */}
             <div
@@ -389,37 +457,67 @@ export const CouncilDebateRoom: React.FC<CouncilDebateRoomProps> = ({
               <span>{activeSpeech?.agentName || "主审官"}</span>
             </div>
 
-            {/* 角色正文大台词 */}
-            <p className="text-sm sm:text-base font-serif text-white leading-relaxed tracking-wide min-h-[52px] pt-1">
-              {activeSpeech?.content}
+            {/* 角色正文大台词 (逐字打字机流式字符效果 + 拟真光标) */}
+            <p className="text-sm sm:text-base font-serif text-white leading-relaxed tracking-wide min-h-[52px] pt-1 select-none">
+              {streamedText || activeSpeech?.content}
+              {isTyping && (
+                <span className="inline-block w-1.5 h-4 ml-1 bg-cyan-400 animate-pulse align-middle shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+              )}
             </p>
 
             {/* 底部翻页控制器 */}
             <div className="mt-2.5 flex items-center justify-between border-t border-zinc-800/80 pt-2 text-xs text-zinc-500">
               <span
-                className={`font-mono text-[10px] ${
+                className={`font-mono text-[10px] flex items-center gap-1.5 ${
                   activeSpeech?.interrupted || activeSpeech?.content.includes("反对")
                     ? "text-red-400 font-bold animate-pulse"
                     : "text-cyan-400"
                 }`}
               >
-                {activeSpeech?.interrupted || activeSpeech?.content.includes("反对")
-                  ? "🚨【强势打断 · 严正反对中】"
-                  : "● 庭审对战进行中"}
+                {isTyping ? (
+                  <>
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+                    <span>委员正在陈述中（点击可跳过打字）</span>
+                  </>
+                ) : activeSpeech?.interrupted || activeSpeech?.content.includes("反对") ? (
+                  "🚨【强势打断 · 严正反对中】"
+                ) : (
+                  "● 庭审对战进行中"
+                )}
               </span>
 
               <div className="flex items-center gap-2">
+                {isTyping && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRevealFullSentence();
+                    }}
+                    className="rounded px-2 py-0.5 bg-zinc-800 text-cyan-300 border border-cyan-500/30 text-[10px] hover:text-white transition"
+                  >
+                    跳过打字
+                  </button>
+                )}
                 <button
-                  onClick={() => setCurrentIdx((p) => Math.max(1, p - 1))}
-                  className="rounded px-2 py-0.5 bg-zinc-800/80 text-zinc-300 hover:text-white transition"
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentIdx((p) => Math.max(0, p - 1));
+                  }}
+                  className="rounded px-2 py-0.5 bg-zinc-800/80 text-zinc-300 hover:text-white transition text-xs"
                 >
                   上一句
                 </button>
                 <button
-                  onClick={() => setCurrentIdx((p) => Math.min(liveSpeeches.length, p + 1))}
-                  className="rounded px-3 py-0.5 bg-cyan-600 text-white font-bold hover:bg-cyan-500 shadow transition"
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleNextSpeech();
+                  }}
+                  className="rounded px-3 py-0.5 bg-cyan-600 text-white font-bold hover:bg-cyan-500 shadow transition text-xs"
                 >
-                  下一句 ▼
+                  {isTyping ? "展开全句" : "下一句 ▼"}
                 </button>
               </div>
             </div>
@@ -469,7 +567,10 @@ export const CouncilDebateRoom: React.FC<CouncilDebateRoomProps> = ({
                     <span>【内耗委员会主审官 · 法槌整肃】</span>
                   </div>
                   <p className="text-xs sm:text-sm font-serif text-zinc-200 leading-relaxed">
-                    {sp.content}
+                    {activeSpeech?.id === sp.id && isTyping ? streamedText : sp.content}
+                    {activeSpeech?.id === sp.id && isTyping && (
+                      <span className="inline-block w-1.5 h-3.5 ml-1 bg-cyan-400 animate-pulse align-middle" />
+                    )}
                   </p>
                 </div>
               );
@@ -527,7 +628,10 @@ export const CouncilDebateRoom: React.FC<CouncilDebateRoomProps> = ({
                         : "border-zinc-800 bg-zinc-900/80 text-zinc-200 hover:border-zinc-700"
                     }`}
                   >
-                    {sp.content}
+                    {activeSpeech?.id === sp.id && isTyping ? streamedText : sp.content}
+                    {activeSpeech?.id === sp.id && isTyping && (
+                      <span className="inline-block w-1.5 h-3.5 ml-1 bg-cyan-400 animate-pulse align-middle" />
+                    )}
                   </div>
                 </div>
               </div>
