@@ -3,6 +3,7 @@ import { generateInterrogationReplies } from "@/lib/server/council-service";
 import {
   getClientIp,
   checkRateLimit,
+  checkPayloadSize,
   redactSecretsFromError,
   sanitizeApiKey,
   sanitizeUserInput,
@@ -13,7 +14,15 @@ const NO_CACHE_HEADERS = {
 };
 
 export async function POST(req: NextRequest) {
-  // IP 速率限制
+  // 1. 检查请求体尺寸 (防 DoS)
+  if (!checkPayloadSize(req)) {
+    return NextResponse.json(
+      { success: false, error: "请求数据包过大 (Payload Too Large)" },
+      { status: 413, headers: NO_CACHE_HEADERS }
+    );
+  }
+
+  // 2. IP 速率限制
   const clientIp = getClientIp(req);
   const rateLimit = checkRateLimit(clientIp, 45);
   if (!rateLimit.allowed) {

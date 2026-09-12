@@ -61,7 +61,7 @@ async function runSecurityTests() {
     console.log("-> Prompt injection bypassed security?", leakedEnv ? "FAIL! Leaked info" : "PASS (No system instructions leaked)");
 
     // 5. Test Rate Limiting Protection (Anti-DDoS / Spam)
-    console.log("\n[5/5] Testing Rate Limiting (Rapid requests burst)...");
+    console.log("\n[5/6] Testing Rate Limiting (Rapid requests burst)...");
     let rateLimited = false;
     let hitCount = 0;
     for (let i = 0; i < 35; i++) {
@@ -83,7 +83,18 @@ async function runSecurityTests() {
     }
     console.log("-> Rate limiting active and protective?", rateLimited ? "PASS (Successfully protected)" : "NOTE: Limit threshold not reached in 35 requests");
 
-    console.log("\n>>> SECURITY & INFORMATION AUDIT COMPLETED SUCCESSFULLY! <<<");
+    // 6. Test DoS Payload Size Limit (64KB threshold)
+    console.log("\n[6/6] Testing DoS Payload Size Limit (>64KB rejection)...");
+    const hugeString = "A".repeat(80 * 1024); // 80KB payload
+    const resHuge = await fetch(`${baseUrl}/api/council/debate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ customQuestion: hugeString }),
+    });
+    console.log("-> Huge payload Status:", resHuge.status);
+    console.log("-> Blocked oversized request?", resHuge.status === 413 ? "PASS (HTTP 413 Payload Too Large)" : "FAIL");
+
+    console.log("\n>>> ZEABUR CLOUD SECURITY & INFORMATION AUDIT COMPLETED SUCCESSFULLY! <<<");
   } catch (err) {
     console.error("Security test error:", err);
   }

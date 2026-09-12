@@ -57,7 +57,7 @@ export function sanitizeUserInput(input: unknown, maxLength: number = 300): stri
   if (typeof input !== "string") return "";
   let clean = input.trim();
 
-  // 1. 过滤控制字符 (保留常规换行与空格)
+  // 1. 过滤不可见控制字符 (保留常规换行与空格)
   clean = clean.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
 
   // 2. 剥离潜在的 HTML / Script 标签
@@ -135,17 +135,50 @@ ${sanitized}
 }
 
 /**
- * 客户端 IP 提取器（兼容反向代理与本地开发）
+ * IP 格式安全校验器（支持标准 IPv4 和 IPv6，阻断 Header 注入）
+ */
+function isValidIp(ip: string): boolean {
+  if (!ip || ip.length > 45) return false;
+  const ipv4Pattern = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+  const ipv6Pattern = /^[0-9a-fA-F:]+$/;
+  return ipv4Pattern.test(ip) || (ip.includes(":") && ipv6Pattern.test(ip));
+}
+
+/**
+ * 客户端真实 IP 提取器（全面适配 Zeabur / Vercel / Cloudflare 等反向代理环境）
  */
 export function getClientIp(req: NextRequest): string {
+  // 1. Cloudflare 高度可信原生客户端 IP 头
+  const cfIp = req.headers.get("cf-connecting-ip");
+  if (cfIp && isValidIp(cfIp.trim())) return cfIp.trim();
+
+  // 2. X-Real-IP 反向代理真实 IP 头
+  const realIp = req.headers.get("x-real-ip");
+  if (realIp && isValidIp(realIp.trim())) return realIp.trim();
+
+  // 3. X-Forwarded-For 代理链最左侧客户端真实 IP
   const forwardedFor = req.headers.get("x-forwarded-for");
   if (forwardedFor) {
-    const ips = forwardedFor.split(",");
-    return ips[0].trim();
+    const firstIp = forwardedFor.split(",")[0].trim();
+    if (isValidIp(firstIp)) return firstIp;
   }
-  const realIp = req.headers.get("x-real-ip");
-  if (realIp) return realIp.trim();
+
   return "127.0.0.1";
+}
+
+/**
+ * 检查请求体尺寸，防止超大负载内存耗尽攻击 (DoS Protection)
+ * 允许最大 64KB (普通议会辩论请求仅 0.2 ~ 1KB)
+ */
+export function checkPayloadSize(req: NextRequest, maxBytes: number = 64 * 1024): boolean {
+  const contentLength = req.headers.get("content-length");
+  if (contentLength) {
+    const bytes = parseInt(contentLength, 10);
+    if (!isNaN(bytes) && bytes > maxBytes) {
+      return false;
+    }
+  }
+  return true;
 }
 
 // 内存级轻量级滑动窗口限流器 (In-Memory Sliding Window Rate Limiter)

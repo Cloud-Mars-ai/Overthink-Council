@@ -8,6 +8,7 @@ import { AGENT_PROFILES } from "@/lib/agents-data";
 import {
   getClientIp,
   checkRateLimit,
+  checkPayloadSize,
   redactSecretsFromError,
   sanitizeApiKey,
   sanitizeUserInput,
@@ -25,7 +26,15 @@ const NO_CACHE_HEADERS = {
  * 具备 IP 速率限制防护、密钥脱敏与安全沙盒隔离
  */
 export async function POST(req: NextRequest) {
-  // 1. IP 速率限制防护
+  // 1. 检查请求体尺寸 (防 DoS 内存耗尽)
+  if (!checkPayloadSize(req)) {
+    return NextResponse.json(
+      { success: false, error: "请求数据包过大 (Payload Too Large)" },
+      { status: 413, headers: NO_CACHE_HEADERS }
+    );
+  }
+
+  // 2. IP 速率限制防护
   const clientIp = getClientIp(req);
   const rateLimit = checkRateLimit(clientIp, 30);
   if (!rateLimit.allowed) {
