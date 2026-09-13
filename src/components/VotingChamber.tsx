@@ -246,7 +246,7 @@ export const VotingChamber: React.FC<VotingChamberProps> = ({
                 const prof = AGENT_PROFILES[v.agentId];
                 return (
                   <div
-                    key={v.agentId}
+                    key={`${v.agentId}_${i}`}
                     className={`flex flex-col justify-between rounded-xl border p-3 text-xs transition-all duration-300 ${
                       isRevealed
                         ? "border-cyan-500/40 bg-[#0e1428] opacity-100 scale-100 shadow-[0_0_15px_rgba(6,182,212,0.1)]"
