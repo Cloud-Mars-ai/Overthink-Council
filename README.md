@@ -5,14 +5,19 @@
 
 一句话定位：把大学生日常纠结拆成多种价值观的公开辩论，并收束成一份可执行、可复盘的红头决议。
 
-📘 [项目文档与 PRD（Markdown）](docs/PROJECT_PRD.md) · 📝 [Word 版 PRD](docs/PROJECT_PRD.docx) · 🔗 [GitHub 仓库](https://github.com/Felix77720/Infighting-Commitee)
+📘 [项目文档与 PRD（Markdown）](docs/PROJECT_PRD.md) · 📝 [Word 版 PRD](docs/PROJECT_PRD.docx) · 🔗 [GitHub 仓库](https://github.com/Felix77720/Overthink-Council) · 🚀 **[在线体验 (Live Demo)](https://overthink-council.vercel.app/)**
 
+[![Vercel](https://img.shields.io/badge/Vercel-已上线%20Live-brightgreen?style=for-the-badge&logo=vercel)](https://overthink-council.vercel.app/)
 [![Next.js](https://img.shields.io/badge/Next.js-16.3.4-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19.2.8-blue?style=for-the-badge&logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4.0-38bdf8?style=for-the-badge&logo=tailwindcss)](https://tailwindcss.com/)
 [![Google Gemini](https://img.shields.io/badge/Gemini_API-2.5_Flash-orange?style=for-the-badge&logo=google)](https://ai.google.dev/)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+
+> 🌐 **线上正式体验地址**：👉 **[https://overthink-council.vercel.app/](https://overthink-council.vercel.app/)** 👈  
+> （支持全平台即开即用、实时 SSE 流式辩论、AI 质询交互与红头决议公文生成导出）
+
 
 ---
 
@@ -174,8 +179,12 @@ npm run build
 
 本项目基于标准的 Next.js 16 App Router 开发，推荐以下几种一键上线方案：
 
-### 方案一：Vercel 部署 (最推荐，1分钟免运维上线)
+### 方案一：Vercel 部署 (已正式上线 ✅)
 
+> 🚀 **现已部署上线**：[https://overthink-council.vercel.app/](https://overthink-council.vercel.app/)  
+> 项目现已成功托管于 Vercel 全球边缘网络，支持自动化持续集成（CI/CD），推送代码自动拉起构建。
+
+若自行 Fork 部署，流程如下：
 1. 打开 [Vercel 官网](https://vercel.com/) 并使用 GitHub 账号登录。
 2. 点击 **"Add New..."** -> **"Project"**。
 3. 在 GitHub 仓库列表中找到本项目，点击 **"Import"**。
@@ -184,8 +193,7 @@ npm run build
    - `OPENAI_API_KEY`: （可选）OpenAI 兼容服务密钥。
    - `OPENAI_BASE_URL`: （可选）OpenAI 兼容服务地址。
    - `TRUST_PROXY_HEADERS`: 只有部署在可信反向代理后且已确认代理会覆盖访客 IP Header 时才设置为 `true`。
-5. 点击 **"Deploy"**。
-6. 等待约 1 分钟构建完成，即可获得专属的全球 CDN 加速公网域名（如 `https://overthink-council.vercel.app`）！
+5. 点击 **"Deploy"**，等待约 1 分钟即可完成部署！
 
 ### 方案二：Zeabur / Railway / Render 部署 (国内网络友好)
 
