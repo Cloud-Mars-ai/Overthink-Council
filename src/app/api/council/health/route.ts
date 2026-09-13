@@ -7,7 +7,8 @@ const NO_CACHE_HEADERS = {
 };
 
 export async function GET() {
-  const hasEnvKey = Boolean(process.env.GEMINI_API_KEY);
+  const hasGeminiKey = Boolean(process.env.GEMINI_API_KEY);
+  const hasOpenAiKey = Boolean(process.env.OPENAI_API_KEY);
 
   return NextResponse.json(
     {
@@ -17,10 +18,14 @@ export async function GET() {
       uptimeSeconds: Math.floor(process.uptime()),
       security: {
         rateLimiterActive: true,
+        rateLimiterScope: "process-local",
         inputSanitizationActive: true,
         promptInjectionGuardActive: true,
-        serverEnvKeyConfigured: hasEnvKey,
-        serverEnvKeyMasked: hasEnvKey ? maskSecret(process.env.GEMINI_API_KEY) : "NOT_CONFIGURED",
+        modelOutputValidationActive: true,
+        proxyHeadersTrusted: process.env.TRUST_PROXY_HEADERS === "true",
+        serverEnvKeyConfigured: hasGeminiKey || hasOpenAiKey,
+        serverEnvKeyMasked: hasGeminiKey ? maskSecret(process.env.GEMINI_API_KEY) : "NOT_CONFIGURED",
+        openAiEnvKeyConfigured: hasOpenAiKey,
       },
       activeCommissioners: Object.keys(AGENT_PROFILES).map((id) => ({
         id,

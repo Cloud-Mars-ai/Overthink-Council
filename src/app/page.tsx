@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Navbar } from "@/components/Navbar";
 import { PresetAccordion } from "@/components/PresetAccordion";
 import { CommissionerRoster } from "@/components/CommissionerRoster";
@@ -12,15 +12,102 @@ import { MindParliamentBento } from "@/components/MindParliamentBento";
 import { OfficialResolutionCard } from "@/components/OfficialResolutionCard";
 import { SettingsModal } from "@/components/SettingsModal";
 import { MindEcologyModal } from "@/components/MindEcologyModal";
-import { PRESET_SCRIPTS, generateProceduralCouncil, getRealtimeScript, CouncilMeetingScript } from "@/lib/council-engine";
-import { PresetTopic, MeetingPhase, UserEcologyProfile } from "@/lib/types";
-import { playBell, playAlarm, playVoteTick } from "@/lib/audio";
-import { Scale, Sparkles, Send, ShieldAlert, ArrowLeft, Zap, Flame, Compass, X, Users, FileText } from "lucide-react";
+import { generateProceduralCouncil, getRealtimeScript, CouncilMeetingScript } from "@/lib/council-engine";
+import { AgentId, ApiConfig, ApiProvider, PresetTopic, MeetingPhase, UserEcologyProfile } from "@/lib/types";
+import { playBell, playAlarm } from "@/lib/audio";
+import { Scale, Sparkles, Send, ArrowLeft, Compass, X, Users, FileText } from "lucide-react";
+
+type GenerationSource = "gemini" | "openai" | "procedural" | "preset";
+
+interface StreamStatus {
+  caseNumber: string;
+  agentName: string;
+  text: string;
+  speechIndex: number;
+  source: GenerationSource;
+}
+
+interface DebatePayload {
+  topicId?: string;
+  customQuestion?: string;
+  userEcology: UserEcologyProfile | null;
+  apiKey: string;
+  apiProvider: ApiProvider;
+  apiBaseUrl: string;
+  apiModel: string;
+}
+
+interface SavedCase {
+  caseNumber: string;
+  topicTitle: string;
+  savedAt: string;
+  script: CouncilMeetingScript;
+}
+
+async function consumeDebateStream(
+  payload: DebatePayload,
+  onEvent: (event: string, data: Record<string, unknown>) => void,
+  signal: AbortSignal
+): Promise<CouncilMeetingScript> {
+  const response = await fetch("/api/council/stream", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    signal,
+  });
+
+  if (!response.ok || !response.body) {
+    throw new Error(`stream request failed: ${response.status}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let completedScript: CouncilMeetingScript | null = null;
+
+  const processBlock = (block: string) => {
+    const lines = block.split("\n");
+    let eventName = "message";
+    let dataText = "";
+    for (const line of lines) {
+      if (line.startsWith("event:")) eventName = line.slice(6).trim();
+      if (line.startsWith("data:")) dataText += line.slice(5).trim();
+    }
+    if (!dataText) return;
+    const data = JSON.parse(dataText) as Record<string, unknown>;
+    if (eventName === "done" && data.fullScript) {
+      completedScript = data.fullScript as CouncilMeetingScript;
+    }
+    if (eventName === "error") {
+      throw new Error(typeof data.message === "string" ? data.message : "流式传输异常");
+    }
+    onEvent(eventName, data);
+  };
+
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+    const blocks = buffer.split("\n\n");
+    buffer = blocks.pop() || "";
+    blocks.forEach(processBlock);
+    if (done) break;
+  }
+  if (buffer.trim()) processBlock(buffer);
+
+  if (!completedScript) throw new Error("流式结果不完整");
+  return completedScript;
+}
 
 export default function Home() {
   const [customQuestion, setCustomQuestion] = useState<string>("");
   const [phase, setPhase] = useState<MeetingPhase>("idle");
   const [activeScript, setActiveScript] = useState<CouncilMeetingScript | null>(null);
+  const [generationSource, setGenerationSource] = useState<GenerationSource>("procedural");
+  const [streamStatus, setStreamStatus] = useState<StreamStatus | null>(null);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [verdictNotice, setVerdictNotice] = useState<string | null>(null);
+  const [recentCases, setRecentCases] = useState<SavedCase[]>([]);
+  const debateAbortRef = useRef<AbortController | null>(null);
 
   // 用户脑内生态画像 (User Ecology Profile)
   const [userEcology, setUserEcology] = useState<UserEcologyProfile | null>(null);
@@ -36,25 +123,24 @@ export default function Home() {
   const [isShareCardOpen, setIsShareCardOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
 
-  // API配置
-  const [apiKey, setApiKey] = useState<string>("");
-  const [apiProvider, setApiProvider] = useState<string>("gemini");
+  // API 配置：密钥只保存在当前会话内，不写入 localStorage
+  const [apiConfig, setApiConfig] = useState<ApiConfig>({
+    provider: "gemini",
+    apiKey: "",
+    baseUrl: "https://api.openai.com/v1",
+    model: "gpt-4o-mini",
+  });
 
   // 初次启动检测：校准脑内神经元生态 & 全局 Escape 键监听
   useEffect(() => {
     try {
       const saved = localStorage.getItem("mind_council_user_ecology");
       if (saved) {
-        setUserEcology(JSON.parse(saved));
-      } else {
-        // 未曾校准，开局主动弹窗引导校准
-        const timer = setTimeout(() => {
-          setIsEcologyModalOpen(true);
-        }, 800);
-        return () => clearTimeout(timer);
+        const parsed = JSON.parse(saved) as UserEcologyProfile;
+        window.setTimeout(() => setUserEcology(parsed), 0);
       }
     } catch {
-      // ignore
+      // 忽略损坏的画像数据，用户仍可从首页手动开启校准
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -69,83 +155,196 @@ export default function Home() {
       }
     };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, []);
+
+  useEffect(() => {
+    const historyTimer = window.setTimeout(() => {
+      try {
+        const saved = localStorage.getItem("mind_council_recent_cases");
+        if (!saved) return;
+        const parsed = JSON.parse(saved) as SavedCase[];
+        if (Array.isArray(parsed)) {
+          setRecentCases(parsed.filter((entry) => entry?.script?.resolution && entry?.script?.caseNumber).slice(0, 3));
+        }
+      } catch {
+        // 忽略损坏或过期的本地历史，保证主流程可用
+      }
+    }, 0);
+    return () => window.clearTimeout(historyTimer);
+  }, []);
+
+  const anyModalOpen = isRosterOpen || isDossiersOpen || isParliamentOpen || isAppealOpen || isShareCardOpen || isSettingsOpen || isEcologyModalOpen;
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    if (anyModalOpen) document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [anyModalOpen]);
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // 1. 选择经典预设议题（调用后端注入当下真实时间与动态开场）
-  const handleSelectPreset = async (topic: PresetTopic) => {
-    setIsDossiersOpen(false);
+  const getPriorityAgents = (): AgentId[] => userEcology
+    ? (Object.entries(userEcology.powerMap) as Array<[AgentId, number]>)
+        .filter(([agentId]) => agentId !== "chairman")
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 3)
+        .map(([agentId]) => agentId)
+    : [];
+
+  const rememberScript = (script: CouncilMeetingScript) => {
+    const entry: SavedCase = {
+      caseNumber: script.caseNumber,
+      topicTitle: script.topicTitle,
+      savedAt: new Date().toLocaleString("zh-CN"),
+      script,
+    };
+    setRecentCases((current) => {
+      const next = [entry, ...current.filter((item) => item.caseNumber !== script.caseNumber)].slice(0, 3);
+      try {
+        localStorage.setItem("mind_council_recent_cases", JSON.stringify(next));
+      } catch {
+        // 历史记录不是主流程依赖，存储空间不足时静默跳过
+      }
+      return next;
+    });
+  };
+
+  const runDebate = async (payload: DebatePayload, fallbackQuestion: string) => {
+    debateAbortRef.current?.abort();
+    const controller = new AbortController();
+    debateAbortRef.current = controller;
     setIsLoading(true);
+    setGenerationError(null);
+    setStreamStatus(null);
+    setVerdictNotice(null);
 
     try {
-      const res = await fetch("/api/council/debate", {
+      let streamSource: GenerationSource = payload.topicId ? "preset" : "procedural";
+      try {
+        const script = await consumeDebateStream(payload, (event, data) => {
+          if (event === "connected") {
+            streamSource = (data.source as GenerationSource) || streamSource;
+            setStreamStatus({
+              caseNumber: typeof data.caseNumber === "string" ? data.caseNumber : "立案中",
+              agentName: "委员会主任",
+              text: "正在连接脑内议会并准备第一份陈述…",
+              speechIndex: 0,
+              source: streamSource,
+            });
+          } else if (event === "speech_start") {
+            setStreamStatus((current) => ({
+              caseNumber: current?.caseNumber || "审理中",
+              agentName: typeof data.agentName === "string" ? data.agentName : "委员",
+              text: "",
+              speechIndex: typeof data.index === "number" ? data.index + 1 : current?.speechIndex || 1,
+              source: current?.source || "procedural",
+            }));
+          } else if (event === "speech_chunk") {
+            setStreamStatus((current) => current ? { ...current, text: `${current.text}${typeof data.chunk === "string" ? data.chunk : ""}` } : current);
+          } else if (event === "speech_end") {
+            setStreamStatus((current) => current ? { ...current, text: typeof data.content === "string" ? data.content : current.text } : current);
+          }
+        }, controller.signal);
+        setGenerationSource(streamSource);
+        setActiveScript(script);
+        rememberScript(script);
+        setPhase("analyzing");
+        return;
+      } catch (streamError) {
+        if (controller.signal.aborted) return;
+        console.warn("SSE debate stream failed, trying JSON fallback:", streamError);
+      }
+
+      const response = await fetch("/api/council/debate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topicId: topic.id,
-          userEcology,
-          apiKey,
-          apiProvider,
-        }),
+        body: JSON.stringify(payload),
+        signal: controller.signal,
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.script) {
-          setActiveScript(data.script);
-          setPhase("analyzing");
-          return;
-        }
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && data.success && data.script) {
+        setGenerationSource((data.source as GenerationSource) || (payload.topicId ? "preset" : "procedural"));
+        setActiveScript(data.script as CouncilMeetingScript);
+        rememberScript(data.script as CouncilMeetingScript);
+        setPhase("analyzing");
+        return;
       }
-    } catch (err) {
-      console.warn("Backend debate fetch failed, falling back to local:", err);
-    } finally {
-      setIsLoading(false);
-    }
 
-    // 离线/降级兜底
-    const script = getRealtimeScript(topic.id, topic.question);
-    setActiveScript(script);
+      const fallback = payload.topicId
+        ? getRealtimeScript(payload.topicId, fallbackQuestion)
+        : generateProceduralCouncil(fallbackQuestion, getPriorityAgents());
+      setGenerationSource(payload.topicId ? "preset" : "procedural");
+      setActiveScript(fallback);
+      rememberScript(fallback);
+      setPhase("analyzing");
+      setGenerationError("在线引擎暂时不可用，已切换到本地离线引擎，内容仍可正常体验。");
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        console.warn("Debate generation failed:", error);
+        const fallback = payload.topicId
+          ? getRealtimeScript(payload.topicId, fallbackQuestion)
+          : generateProceduralCouncil(fallbackQuestion, getPriorityAgents());
+        setGenerationSource(payload.topicId ? "preset" : "procedural");
+        setActiveScript(fallback);
+        rememberScript(fallback);
+        setPhase("analyzing");
+        setGenerationError("网络连接异常，已使用本地离线引擎完成审议。");
+      }
+    } finally {
+      if (debateAbortRef.current === controller) debateAbortRef.current = null;
+      setIsLoading(false);
+      setStreamStatus(null);
+    }
+  };
+
+  const handleCancelGeneration = () => {
+    debateAbortRef.current?.abort();
+    debateAbortRef.current = null;
+    setIsLoading(false);
+    setStreamStatus(null);
+    setGenerationError("本次审议已取消。");
+  };
+
+  const handleRestoreCase = (savedCase: SavedCase) => {
+    debateAbortRef.current?.abort();
+    setActiveScript(savedCase.script);
+    setGenerationSource("procedural");
+    setGenerationError(null);
+    setVerdictNotice("已恢复最近裁决，可继续阅读、质询或进入表决。");
     setPhase("analyzing");
   };
 
-  // 2. 提交自定义内耗问题（调用后端神经元引擎在线/高保真生成）
+  // 1. 选择经典预设议题
+  const handleSelectPreset = async (topic: PresetTopic) => {
+    setIsDossiersOpen(false);
+    await runDebate({
+      topicId: topic.id,
+      userEcology,
+      apiKey: apiConfig.apiKey,
+      apiProvider: apiConfig.provider,
+      apiBaseUrl: apiConfig.baseUrl,
+      apiModel: apiConfig.model,
+    }, topic.question);
+  };
+
+  // 2. 提交自定义内耗问题
   const handleSubmitCustom = async (e?: React.FormEvent, directText?: string) => {
     if (e) e.preventDefault();
     const query = (directText || customQuestion).trim();
-    if (!query) return;
-
-    setIsLoading(true);
-    try {
-      const res = await fetch("/api/council/debate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customQuestion: query,
-          userEcology,
-          apiKey,
-          apiProvider,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.script) {
-          setActiveScript(data.script);
-          setPhase("analyzing");
-          return;
-        }
-      }
-    } catch (err) {
-      console.warn("Backend custom debate fetch failed, falling back to local:", err);
-    } finally {
-      setIsLoading(false);
-    }
-
-    // 离线/降级兜底
-    const script = generateProceduralCouncil(query);
-    setActiveScript(script);
-    setPhase("analyzing");
+    if (!query || isLoading) return;
+    await runDebate({
+      customQuestion: query,
+      userEcology,
+      apiKey: apiConfig.apiKey,
+      apiProvider: apiConfig.provider,
+      apiBaseUrl: apiConfig.baseUrl,
+      apiModel: apiConfig.model,
+    }, query);
   };
 
   // 3. 从立案弹窗进入议会辩论室
@@ -168,6 +367,11 @@ export default function Home() {
     setIsAppealOpen(false);
     if (!activeScript) return;
 
+    if (activeScript.resolution.appealCount >= 1) {
+      setVerdictNotice("本案的二审特别抗告权已经使用完毕。");
+      return;
+    }
+
     playAlarm();
     setIsLoading(true);
 
@@ -181,21 +385,38 @@ export default function Home() {
           appealReason: evidence,
           activeScript,
           userEcology,
-          apiKey,
+          apiKey: apiConfig.apiKey,
+          apiProvider: apiConfig.provider,
+          apiBaseUrl: apiConfig.baseUrl,
+          apiModel: apiConfig.model,
         }),
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.success && data.newAgentId && data.emergencySpeeches) {
-          setActiveScript({
-            ...activeScript,
-            caseNumber: data.amendedResolution.caseNumber,
-            summonedAgentIds: [...activeScript.summonedAgentIds, data.newAgentId],
-            speeches: [...activeScript.speeches, ...data.emergencySpeeches],
-            resolution: data.amendedResolution,
-          });
-          setPhase("opening");
-          return;
+          if (data.success && data.newAgentId && data.emergencySpeeches) {
+            const nextScript = data.amendedScript as CouncilMeetingScript | undefined;
+            if (nextScript) {
+              setActiveScript(nextScript);
+              rememberScript(nextScript);
+            } else {
+              const amendedPlans = activeScript.plans.map((plan) =>
+                plan.id === data.amendedResolution.winningPlan.id ? data.amendedResolution.winningPlan : plan
+              );
+              const mergedScript = {
+                ...activeScript,
+                caseNumber: data.amendedResolution.caseNumber,
+                summonedAgentIds: Array.from(new Set([...activeScript.summonedAgentIds, data.newAgentId])),
+                speeches: [...activeScript.speeches, ...data.emergencySpeeches],
+                plans: amendedPlans,
+                resolution: data.amendedResolution,
+                appealScript: undefined,
+              };
+              setActiveScript(mergedScript);
+              rememberScript(mergedScript);
+            }
+            setGenerationSource("procedural");
+            setPhase("opening");
+            return;
         }
       }
     } catch (err) {
@@ -205,33 +426,34 @@ export default function Home() {
     }
 
     // 降级兜底
-    if (activeScript.appealScript) {
-      const { newAgentId, emergencySpeeches, amendedResolution } = activeScript.appealScript;
-      setActiveScript({
-        ...activeScript,
-        caseNumber: amendedResolution.caseNumber,
-        summonedAgentIds: [...activeScript.summonedAgentIds, newAgentId],
-        speeches: [...activeScript.speeches, ...emergencySpeeches],
-        resolution: amendedResolution,
-      });
-    } else {
-      const dynScript = generateProceduralCouncil(activeScript.topicTitle + " (已提交新证据：" + evidence + ")");
-      setActiveScript(dynScript);
-    }
+    const dynScript = generateProceduralCouncil(`${activeScript.topicTitle}（二审新证据：${evidence}）`);
+    setActiveScript(dynScript);
+    rememberScript(dynScript);
+    setGenerationSource("procedural");
 
     setPhase("opening");
   };
 
   // 6. 接受判决
-  const handleAcceptVerdict = () => {
+  const handleAcceptVerdict = (planId?: "A" | "B" | "C") => {
+    if (activeScript && planId) {
+      const selectedPlan = activeScript.plans.find((plan) => plan.id === planId);
+      if (selectedPlan) {
+        setActiveScript({
+          ...activeScript,
+          resolution: { ...activeScript.resolution, winningPlan: selectedPlan },
+        });
+      }
+    }
     setPhase("idle");
     setCustomQuestion("");
+    setVerdictNotice(null);
     const el = document.getElementById("mind-ecosystem");
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
   const handleRejectVerdict = () => {
-    // 记录抗命
+    setVerdictNotice("已记录：你暂缓执行本次裁决。建议保留一个明确的重新决策时间，避免无限复盘。");
   };
 
   return (
@@ -252,6 +474,11 @@ export default function Home() {
 
       {/* 主工作区 */}
       <main className="relative z-10 flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 pt-4 sm:pt-8 pb-16">
+        {verdictNotice && (
+          <div className="mx-auto mb-4 max-w-4xl rounded-xl border border-amber-500/40 bg-amber-950/30 px-4 py-3 text-xs text-amber-200" role="status">
+            {verdictNotice}
+          </div>
+        )}
         {/* 立案分析弹窗 */}
         {phase === "analyzing" && activeScript && (
           <SituationAnalyzerModal
@@ -261,6 +488,7 @@ export default function Home() {
             urgency={activeScript.urgency}
             keyConflict={activeScript.keyConflict}
             summonedAgentIds={activeScript.summonedAgentIds}
+            source={generationSource}
             onEnterCourt={handleEnterDebate}
           />
         )}
@@ -278,11 +506,13 @@ export default function Home() {
               </button>
             </div>
             <CouncilDebateRoom
+              key={`${activeScript.caseNumber}-${activeScript.speeches.length}`}
               caseNumber={activeScript.caseNumber}
               topicTitle={activeScript.topicTitle}
               speeches={activeScript.speeches}
               onFinishDebate={handleFinishDebate}
               summonedAgentIds={activeScript.summonedAgentIds}
+              apiConfig={apiConfig}
             />
           </div>
         )}
@@ -314,6 +544,47 @@ export default function Home() {
         {/* 初始状态：极简聚焦单对话框首页 */}
         {phase === "idle" && (
           <div className="min-h-[72vh] flex flex-col justify-center items-center py-6 sm:py-12 animate-fadeIn">
+            {streamStatus && (
+              <div className="mb-5 w-full max-w-2xl rounded-2xl border border-cyan-500/40 bg-cyan-950/30 p-4 shadow-[0_0_30px_rgba(6,182,212,0.2)]" role="status" aria-live="polite">
+                <div className="flex items-center justify-between gap-3 text-xs text-cyan-300">
+                  <span className="flex items-center gap-2 font-bold">
+                    <span className="h-2 w-2 rounded-full bg-cyan-400 animate-ping" />
+                    脑内议会正在实时开庭 · {streamStatus.agentName}
+                  </span>
+                  <span className="font-mono text-[10px] text-zinc-400">{streamStatus.speechIndex > 0 ? `第 ${streamStatus.speechIndex} 位发言` : "连接中"}</span>
+                </div>
+                <p className="mt-2 min-h-10 text-xs leading-relaxed text-zinc-200">{streamStatus.text || "正在等待委员起立陈述…"}</p>
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <span className="text-[10px] text-zinc-500 font-mono">{streamStatus.caseNumber}</span>
+                  <button type="button" onClick={handleCancelGeneration} className="rounded-lg border border-zinc-700 px-2.5 py-1 text-[10px] text-zinc-300 transition hover:border-red-400 hover:text-red-300">取消审议</button>
+                </div>
+              </div>
+            )}
+            {generationError && !isLoading && (
+              <div className="mb-4 w-full max-w-2xl rounded-xl border border-amber-500/40 bg-amber-950/30 px-3 py-2 text-xs text-amber-200" role="status">
+                {generationError}
+              </div>
+            )}
+            {recentCases.length > 0 && !isLoading && (
+              <details className="mb-5 w-full max-w-2xl rounded-2xl border border-white/[0.08] bg-zinc-950/60 p-3 text-left">
+                <summary className="cursor-pointer list-none text-xs font-bold text-zinc-300">
+                  <span className="mr-2 text-cyan-400">↺</span>恢复最近裁决（仅保存在本机）
+                </summary>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  {recentCases.map((savedCase) => (
+                    <button
+                      key={savedCase.caseNumber}
+                      type="button"
+                      onClick={() => handleRestoreCase(savedCase)}
+                      className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-2.5 text-left transition hover:border-cyan-500/60 hover:bg-cyan-950/30"
+                    >
+                      <span className="block truncate text-[11px] font-bold text-white">{savedCase.topicTitle}</span>
+                      <span className="mt-1 block text-[10px] font-mono text-zinc-500">{savedCase.caseNumber} · {savedCase.savedAt}</span>
+                    </button>
+                  ))}
+                </div>
+              </details>
+            )}
             {/* 高定奢华 Hero 核心区 */}
             <div className="text-center w-full max-w-4xl mx-auto space-y-6 sm:space-y-8">
               {/* 顶部核心功能快捷按钮群 (Top Action Ribbon) */}
@@ -463,6 +734,9 @@ export default function Home() {
           onClick={(e) => {
             if (e.target === e.currentTarget) setIsRosterOpen(false);
           }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="脑内委员巡礼"
           className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-2xl animate-fadeIn overflow-y-auto cursor-pointer"
         >
           <div
@@ -470,7 +744,9 @@ export default function Home() {
             className="relative w-full max-w-5xl my-auto cursor-default"
           >
             <button
+              type="button"
               onClick={() => setIsRosterOpen(false)}
+              aria-label="关闭脑内委员巡礼"
               className="absolute -top-3 -right-3 z-50 rounded-full bg-zinc-900 border border-white/20 p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 transition shadow-lg"
               title="关闭"
             >
@@ -487,6 +763,9 @@ export default function Home() {
           onClick={(e) => {
             if (e.target === e.currentTarget) setIsDossiersOpen(false);
           }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="经典内耗卷宗"
           className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-2xl animate-fadeIn overflow-y-auto cursor-pointer"
         >
           <div
@@ -494,7 +773,9 @@ export default function Home() {
             className="relative w-full max-w-5xl my-auto cursor-default"
           >
             <button
+              type="button"
               onClick={() => setIsDossiersOpen(false)}
+              aria-label="关闭经典内耗卷宗"
               className="absolute -top-3 -right-3 z-50 rounded-full bg-zinc-900 border border-white/20 p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 transition shadow-lg"
               title="关闭"
             >
@@ -516,6 +797,9 @@ export default function Home() {
           onClick={(e) => {
             if (e.target === e.currentTarget) setIsParliamentOpen(false);
           }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="100席脑内议会沙盘"
           className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-2xl animate-fadeIn overflow-y-auto cursor-pointer"
         >
           <div
@@ -523,7 +807,9 @@ export default function Home() {
             className="relative w-full max-w-5xl my-auto cursor-default"
           >
             <button
+              type="button"
               onClick={() => setIsParliamentOpen(false)}
+              aria-label="关闭议会沙盘"
               className="absolute -top-3 -right-3 z-50 rounded-full bg-zinc-900 border border-white/20 p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 transition shadow-lg"
               title="关闭"
             >
@@ -571,16 +857,12 @@ export default function Home() {
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        apiKey={apiKey}
-        apiProvider={apiProvider}
-        onSave={(key, provider) => {
-          setApiKey(key);
-          setApiProvider(provider);
-        }}
+        config={apiConfig}
+        onSave={setApiConfig}
       />
 
       {/* 底部版权与二次元审议注记 */}
-      <footer className="w-full border-t border-white/[0.08] bg-[#03050a] py-6 px-4 text-center text-[11px] sm:text-xs text-zinc-500">
+      <footer className="w-full border-t border-white/[0.08] bg-[#03050a] py-6 px-4 text-center text-[11px] sm:text-xs text-zinc-500 print-hidden">
         <div className="flex items-center justify-center gap-2 mb-2 font-mono text-[10px] text-cyan-400">
           <span className="flex h-1.5 w-1.5 rounded-full bg-cyan-400 animate-ping" />
           <span>意识流神经网络运作中 · 学园内耗特别审议会 2.5次元法庭系统</span>

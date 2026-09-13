@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import { AgentId } from "@/lib/types";
 import { AGENT_PROFILES } from "@/lib/agents-data";
 
@@ -16,77 +17,77 @@ const AVATAR_MAP: Record<
   { src: string; alt: string; ringColor: string; shadowColor: string; objectPosition?: string }
 > = {
   gpa: {
-    src: "/avatars/gpa.jpg",
+    src: "/avatars/gpa.webp",
     alt: "GPA委员·椎名学委",
     ringColor: "border-cyan-400 ring-cyan-400/60",
     shadowColor: "rgba(6,182,212,0.6)",
     objectPosition: "object-top",
   },
   sleep: {
-    src: "/avatars/sleep.jpg",
+    src: "/avatars/sleep.webp",
     alt: "睡眠委员·悠悠",
     ringColor: "border-purple-400 ring-purple-400/60",
     shadowColor: "rgba(168,85,247,0.6)",
     objectPosition: "object-top",
   },
   happiness: {
-    src: "/avatars/happiness.jpg",
+    src: "/avatars/happiness.webp",
     alt: "快乐委员·蜜柑",
     ringColor: "border-amber-400 ring-amber-400/60",
     shadowColor: "rgba(245,158,11,0.6)",
     objectPosition: "object-top",
   },
   future: {
-    src: "/avatars/future.jpg",
+    src: "/avatars/future.webp",
     alt: "未来的你",
     ringColor: "border-rose-400 ring-rose-400/60",
     shadowColor: "rgba(244,63,94,0.6)",
     objectPosition: "object-top",
   },
   dignity: {
-    src: "/avatars/dignity.jpg",
+    src: "/avatars/dignity.webp",
     alt: "尊严委员",
     ringColor: "border-yellow-400 ring-yellow-400/60",
     shadowColor: "rgba(234,179,8,0.6)",
     objectPosition: "object-top",
   },
   wallet: {
-    src: "/avatars/wallet.png",
+    src: "/avatars/wallet.webp",
     alt: "钱包委员",
     ringColor: "border-emerald-400 ring-emerald-400/60",
     shadowColor: "rgba(16,185,129,0.6)",
     objectPosition: "object-top",
   },
   social: {
-    src: "/avatars/social.png",
+    src: "/avatars/social.webp",
     alt: "社交委员",
     ringColor: "border-pink-400 ring-pink-400/60",
     shadowColor: "rgba(236,72,153,0.6)",
     objectPosition: "object-top",
   },
   ambition: {
-    src: "/avatars/ambition.png",
+    src: "/avatars/ambition.webp",
     alt: "野心委员",
     ringColor: "border-cyan-500 ring-cyan-500/60",
     shadowColor: "rgba(6,182,212,0.6)",
     objectPosition: "object-top",
   },
   love: {
-    src: "/avatars/love.png",
+    src: "/avatars/love.webp",
     alt: "恋爱委员",
     ringColor: "border-rose-400 ring-rose-400/60",
     shadowColor: "rgba(251,113,133,0.6)",
     objectPosition: "object-top",
   },
   stomach: {
-    src: "/avatars/stomach.png",
+    src: "/avatars/stomach.webp",
     alt: "胃部代表",
     ringColor: "border-orange-400 ring-orange-400/60",
     shadowColor: "rgba(249,115,22,0.6)",
     objectPosition: "object-top",
   },
   chairman: {
-    src: "/avatars/chairman.png",
+    src: "/avatars/chairman.webp",
     alt: "主审官",
     ringColor: "border-indigo-400 ring-indigo-400/60",
     shadowColor: "rgba(99,102,241,0.6)",
@@ -123,9 +124,11 @@ export const CharacterAvatar: React.FC<CharacterAvatarProps> = ({
       }}
     >
       {!loadError ? (
-        <img
+        <Image
           src={avatarConfig.src}
           alt={avatarConfig.alt}
+          fill
+          sizes={size === "xl" ? "(max-width: 640px) 112px, 144px" : size === "lg" ? "80px" : size === "md" ? "48px" : "36px"}
           onError={() => setLoadError(true)}
           className={`w-full h-full object-cover ${avatarConfig.objectPosition || "object-top"} transition-transform duration-500 ${
             isSpeaking ? "scale-105" : "hover:scale-105"

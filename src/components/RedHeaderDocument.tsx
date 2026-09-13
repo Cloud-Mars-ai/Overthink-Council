@@ -1,14 +1,14 @@
 import React, { useState } from "react";
 import { CouncilResolution, ProposalPlan } from "@/lib/types";
 import { AGENT_PROFILES } from "@/lib/agents-data";
-import { Copy, Check, Printer, RefreshCw, CheckCircle2, AlertOctagon, Share2, Sparkles, Camera } from "lucide-react";
+import { Copy, Check, Printer, RefreshCw, CheckCircle2, AlertOctagon, Camera } from "lucide-react";
 import { toPng } from "html-to-image";
 import { SocialPosterModal } from "@/components/SocialPosterModal";
 
 interface RedHeaderDocumentProps {
   resolution: CouncilResolution;
   winningPlan: ProposalPlan;
-  onAccept?: () => void;
+  onAccept?: (planId?: ProposalPlan["id"]) => void;
   onReject?: () => void;
   onOpenAppeal?: () => void;
   compact?: boolean;
@@ -30,10 +30,15 @@ export const RedHeaderDocument: React.FC<RedHeaderDocumentProps> = ({
 
   const supervisingName =
     AGENT_PROFILES[resolution.supervisingAgent]?.name || "脑内监察特别专员";
+  const stampDate = resolution.stampDate || new Date().toLocaleDateString("zh-CN");
+  const nextAction = resolution.nextAction || `先完成「${winningPlan.title}」的第一步，再在固定时间复盘。`;
+  const actionWindow = resolution.actionWindow || "今天内完成第一步";
+  const confidence = Math.max(0, Math.min(100, resolution.confidence ?? 68));
+  const canAppeal = Boolean(onOpenAppeal && resolution.appealCount < 1);
 
   // 格式化复制文本（标准公文格式）
   const officialDocumentText = `学园内耗特别审议委员会文件
-〔2026〕学内审决字第 0927 号
+${resolution.caseNumber}
 --------------------------------------------------
 密级：内部绝密（脑内限定）           签发人：至高额叶审判长
 
@@ -56,12 +61,16 @@ ${resolution.stipulations.map((s, idx) => `（${["一", "二", "三", "四", "�
 本裁决自法槌击落之秒起即刻生效，当事人身体各生理机能应即刻停摆内耗、遵照执行。保留当事人一次提交重大新证据申请二审复核之法定抗告权。
 
 学园内耗特别审议委员会
-二〇二六年九月十二日（已加盖公章）`;
+${stampDate}（已加盖公章）`;
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(officialDocumentText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(officialDocumentText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
   };
 
   const handlePrint = () => {
@@ -90,7 +99,22 @@ ${resolution.stipulations.map((s, idx) => `（${["一", "二", "三", "四", "�
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
+    <div className={`w-full max-w-4xl mx-auto ${compact ? "text-sm" : ""}`}>
+      <div className="mb-4 grid gap-3 rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-950/50 to-zinc-900/80 p-4 font-sans shadow-[0_0_25px_rgba(245,158,11,0.12)]">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-amber-300">执行摘要 · 请把裁决变成行动</p>
+            <p className="mt-1 text-sm font-bold text-white">{nextAction}</p>
+          </div>
+          <span className="rounded-full border border-emerald-500/40 bg-emerald-950/50 px-2.5 py-1 text-[11px] font-mono text-emerald-300">
+            把握度 {confidence}%
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-2 text-[11px] text-zinc-300">
+          <span className="rounded-lg bg-black/30 px-2 py-1">行动窗口：{actionWindow}</span>
+          <span className="rounded-lg bg-black/30 px-2 py-1">娱乐型辅助决策，不替代医疗、法律或财务建议</span>
+        </div>
+      </div>
       {/* 真实红头文件 A4 纸张主体 */}
       <div
         id="official-red-header-doc"
@@ -113,7 +137,7 @@ ${resolution.stipulations.map((s, idx) => `（${["一", "二", "三", "四", "�
             学园内耗特别审议委员会文件
           </h1>
           <div className="mt-2.5 sm:mt-3 text-xs sm:text-sm font-sans font-bold text-zinc-700 tracking-wider">
-            〔2026〕学内审决字第 0927 号
+            {resolution.caseNumber}
           </div>
         </div>
 
@@ -127,7 +151,7 @@ ${resolution.stipulations.map((s, idx) => `（${["一", "二", "三", "四", "�
         <div className="space-y-2 text-xs sm:text-sm font-sans border-b border-zinc-200 pb-3 mb-4 sm:mb-6">
           <div className="flex items-center justify-between text-zinc-600">
             <span>签发人：<strong className="text-zinc-900 font-bold">至高额叶审判长</strong></span>
-            <span>成文日期：<strong className="text-zinc-900 font-medium">{resolution.stampDate || "2026年9月12日"}</strong></span>
+            <span>成文日期：<strong className="text-zinc-900 font-medium">{stampDate}</strong></span>
           </div>
           <div className="text-zinc-800 pt-1 font-bold">
             主送：<span className="font-normal text-zinc-700">当事人中枢神经系统、各大生理器官、全体脑内情感委员：</span>
@@ -214,7 +238,7 @@ ${resolution.stipulations.map((s, idx) => `（${["一", "二", "三", "四", "�
               学园内耗特别审议委员会
             </p>
             <p className="text-xs sm:text-sm font-sans text-zinc-600">
-              二〇二六年九月十二日
+              {stampDate}
             </p>
             <p className="text-[10px] text-zinc-400 font-mono">
               （正式红印归档 · 严禁擅改）
@@ -281,7 +305,7 @@ ${resolution.stipulations.map((s, idx) => `（${["一", "二", "三", "四", "�
       )}
 
       {/* 底部交互操作工具栏 */}
-      <div className="mt-4 sm:mt-6 flex flex-wrap items-center justify-between gap-2.5 p-3 rounded-2xl bg-[#0c1022]/90 border border-white/[0.08] backdrop-blur-xl">
+      <div className="print-hidden mt-4 sm:mt-6 flex flex-wrap items-center justify-between gap-2.5 p-3 rounded-2xl bg-[#0c1022]/90 border border-white/[0.08] backdrop-blur-xl">
         <div className="flex items-center gap-2 flex-wrap">
           {/* 一键生成朋友圈/小红书长图分享海报按钮 */}
           <button
@@ -342,8 +366,9 @@ ${resolution.stipulations.map((s, idx) => `（${["一", "二", "三", "四", "�
             </button>
           )}
 
-          {onOpenAppeal && (
+          {canAppeal && (
             <button
+              type="button"
               onClick={onOpenAppeal}
               className="flex items-center gap-1 rounded-xl border border-amber-500/60 bg-gradient-to-r from-amber-950/50 to-zinc-900 px-3.5 py-2 text-xs font-bold text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.25)] transition hover:brightness-110 active:scale-95"
             >
@@ -354,7 +379,8 @@ ${resolution.stipulations.map((s, idx) => `（${["一", "二", "三", "四", "�
 
           {onAccept && (
             <button
-              onClick={onAccept}
+              type="button"
+              onClick={() => onAccept()}
               className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 px-4 py-2 text-xs font-bold text-white shadow-[0_0_20px_rgba(6,182,212,0.4)] transition hover:brightness-110 active:scale-95"
             >
               <CheckCircle2 className="h-3.5 w-3.5" />

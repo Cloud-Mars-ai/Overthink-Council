@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { playAlarm } from "@/lib/audio";
-import { ShieldAlert, RefreshCw, AlertTriangle, Sparkles, X, Zap } from "lucide-react";
+import { RefreshCw, X, Zap } from "lucide-react";
 
 interface AppealModalProps {
   isOpen: boolean;
@@ -34,7 +34,7 @@ export const AppealModal: React.FC<AppealModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 sm:p-4 backdrop-blur-md animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 sm:p-4 backdrop-blur-md animate-fadeIn" role="dialog" aria-modal="true" aria-labelledby="appeal-dialog-title">
       <div className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-2xl sm:rounded-3xl border-2 border-cyan-500/60 bg-[#0b0e1d] p-5 sm:p-6 shadow-[0_0_60px_rgba(6,182,212,0.35)] animate-alert">
         {/* 顶部标题与关闭 */}
         <div className="flex items-center justify-between border-b border-cyan-900/60 pb-3 mb-3 sm:mb-4">
@@ -42,12 +42,14 @@ export const AppealModal: React.FC<AppealModalProps> = ({
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-500/20 text-cyan-400">
               <Zap className="h-4 w-4" />
             </span>
-            <h3 className="font-serif text-sm sm:text-lg font-bold text-white">
+            <h3 id="appeal-dialog-title" className="font-serif text-sm sm:text-lg font-bold text-white">
               重大情势变更 · 申请二审复核
             </h3>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="关闭二审申请"
             className="rounded-lg p-1 text-zinc-400 transition hover:bg-zinc-800 hover:text-white"
           >
             <X className="h-4 w-4" />

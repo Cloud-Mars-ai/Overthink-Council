@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { PRESET_TOPICS, AGENT_PROFILES } from "@/lib/agents-data";
+import { PRESET_TOPICS } from "@/lib/agents-data";
 import { PresetTopic } from "@/lib/types";
 import { CharacterAvatar } from "@/components/CharacterAvatar";
-import { ArrowRight, FileText, ShieldAlert, Sparkles, Zap, Lock } from "lucide-react";
+import { ArrowRight, FileText, ShieldAlert, Sparkles } from "lucide-react";
 
 interface PresetAccordionProps {
   onSelectTopic: (topic: PresetTopic) => void;

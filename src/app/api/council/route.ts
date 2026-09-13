@@ -65,9 +65,12 @@ export async function POST(req: NextRequest) {
         userQuery,
         topicTitle: sanitizeUserInput(body.topicTitle || body.customQuestion, 100),
         summonedAgents: body.summonedAgents,
-        userEcology: body.userEcology,
-        apiKey: sanitizeApiKey(body.apiKey) || undefined,
-      });
+          userEcology: body.userEcology,
+          apiKey: sanitizeApiKey(body.apiKey) || undefined,
+          apiProvider: body.apiProvider,
+          apiBaseUrl: body.apiBaseUrl,
+          apiModel: body.apiModel,
+        });
 
       return NextResponse.json(
         {
@@ -111,6 +114,8 @@ export async function POST(req: NextRequest) {
       userEcology: body.userEcology,
       apiKey: sanitizeApiKey(body.apiKey) || undefined,
       apiProvider: body.apiProvider,
+      apiBaseUrl: body.apiBaseUrl,
+      apiModel: body.apiModel,
       summonedAgents: body.summonedAgents,
     });
 
@@ -144,7 +149,7 @@ export async function GET() {
       success: true,
       status: "online",
       name: "Mind Council Neural Engine Gateway",
-      version: "2.5.2",
+      version: "2.5.3",
       security: {
         rateLimiterActive: true,
         keySanitizationActive: true,
@@ -154,7 +159,7 @@ export async function GET() {
       },
       serverTime: new Date().toISOString(),
       commissionersCount: Object.keys(AGENT_PROFILES).length,
-      supportedProviders: ["gemini", "procedural"],
+      supportedProviders: ["gemini", "openai", "procedural"],
     },
     { headers: NO_CACHE_HEADERS }
   );

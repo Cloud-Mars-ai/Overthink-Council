@@ -3,6 +3,10 @@
 > **“把脑内的每一次深夜精神拉扯，开成一场全员到齐的二次元多智能体审议会。”**  
 > *A Anime-style Multi-Agent Deliberation & Cognitive Trial System for Overthinking College Students.*
 
+一句话定位：把大学生日常纠结拆成多种价值观的公开辩论，并收束成一份可执行、可复盘的红头决议。
+
+📘 [项目文档与 PRD](docs/PROJECT_PRD.md) · 🔗 [GitHub 仓库](https://github.com/Felix77720/Infighting-Commitee)
+
 [![Next.js](https://img.shields.io/badge/Next.js-16.3.4-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19.2.8-blue?style=for-the-badge&logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
@@ -21,6 +25,12 @@
 
 **「大学生脑内常任委员议会」** 将你的每一次精神内耗抽象为一场多智能体法庭剧。每个委员都是你脑内神经元的极端人格化身，各怀鬼胎、誓死捍卫 KPI，展开一场激烈的脑内辩论，并最终落槌宣读一份极具仪式感的**正式红头决议文件**！
 
+### 产品定位
+
+- **问题**：学习、睡眠、社交、恋爱、消费等日常选择常常风险不高，却会因为多个价值观同时拉扯而产生高强度内耗；普通问答往往给出平直建议，却没有把“为什么”和“下一步”讲清楚。
+- **目标用户**：容易在日常选择上反复犹豫的大学生，以及喜欢二次元、游戏化叙事和多智能体交互的体验者。
+- **解决方式**：通过 11 位脑内委员的实时辩论、用户质询、方案投票和一次二审上诉，把纠结转化为可理解的冲突，再输出带行动、时间窗口和复盘条件的正式决议。
+
 ---
 
 ## 🎮 核心玩法与特性 (Core Features)
@@ -38,7 +48,9 @@
 ### 2. ⚡ 逆转裁判式激辩法庭 (Courtroom Drama)
 - **全屏鲜红「异议あり！」震撼冲击**：拍桌插话、紧急打断、全屏震颤与白光爆闪。
 - **当事人当庭质询追问**：不服辩论结果？随时向台上委员抛出你的无厘头借口，委员针对性当庭回怼！
+- **实时 SSE 开庭**：辩论台词、当前发言委员和连接状态逐段到达，网络异常时自动回退 JSON 与离线引擎。
 - **倍速调节与自动播放**：支持 `1.0x / 0.7x` 舒适阅读节拍切换。
+- **可访问的沉浸体验**：支持键盘关闭弹窗、打印归档和 `prefers-reduced-motion`，降低动效对阅读的干扰。
 
 ### 3. 📜 正式公文级「红头文件裁决令」
 - **红头公文排版**：标准机关公文式样，包含发文字号、绝密密级、主送机关。
@@ -53,21 +65,26 @@
 - 录入年级、专业背景（代码狗/医学生/文科写稿等）、睡眠负债、最致命焦虑源。
 - 动态生成 100 席议会势力沙盘，委员发言直接针对当事人的现实痛点精准开火。
 
+### 6. 🔁 可靠性与恢复能力 (Resilience)
+- 支持 Gemini、OpenAI 兼容接口和纯程序化模式，在线模型失败时自动降级。
+- SSE 建连后立即反馈“立案中”，中断时回退 JSON，再失败时使用本地程序化议会引擎。
+- 最近 3 条决议可在当前浏览器本机恢复查看，不上传独立历史服务。
+
 ---
 
-## 🛡️ 企业级安全审计与信息保障 (Security & Privacy)
+## 🛡️ 安全与隐私保障 (Security & Privacy)
 
-针对线上生产环境与黑客松评审，本项目内置了严密的安全架构：
+针对线上生产环境与黑客松评审，本项目内置了基础安全防护：
 
 1. **凭证脱敏与 Header 认证**：
-   - 彻底摒弃 URL 查询参数传 Key 方式，采用标准 `x-goog-api-key` 请求头认证，网络轨迹与代理日志绝不留痕。
+   - Gemini 使用 `x-goog-api-key` 请求头，OpenAI 兼容服务使用 Bearer 请求头；浏览器端 Key 仅保存在当前会话。
    - 接口报错全局经过 `redactSecretsFromError` 正则清洗，任何潜在密钥均自动转换为 `[REDACTED_CREDENTIAL]`。
 2. **提示词注入沙盒防御 (Prompt Injection Guard)**：
    - 用户输入通过 `<user_inquiry>` 标签严格沙盒隔离，强制注入防越狱（Jailbreak）指令，杜绝系统指令泄漏。
 3. **多重输入清洗与 DoS 防护**：
-   - 过滤 HTML/Script 标签、危险伪协议、系统内部探测关键词（`process.env`）与原型链污染。
+   - 过滤 HTML/Script 标签、危险伪协议、系统内部探测关键词（`process.env`）与原型链污染；这属于输入防护，不等同于对所有模型风险的绝对隔离。
 4. **IP 级滑动窗口限流防刷 (Rate Limiting)**：
-   - 内置轻量级限流保护（每分钟单 IP 限制 30~45 次），高频恶意突发自动响应 `HTTP 429 Too Many Requests`。
+   - 内置进程级轻量限流保护（每分钟单 IP 限制 30 次）；多实例生产部署必须在网关或 Redis 层追加共享限流。
 5. **HTTP 安全标头加固**：
    - 隐蔽 `X-Powered-By: Next.js` 技术指纹；
    - 部署 `X-Frame-Options: DENY`（防点击劫持）、`X-Content-Type-Options: nosniff`（防 MIME 嗅探）、`Referrer-Policy` 等标头。
@@ -83,7 +100,7 @@
    ├── 投票表决厅 (戏剧性反水票 + 民主记名投票)
    └── 红头公文裁决书 (A4 仿真公文 + 骑缝防伪公章)
          │
-         ▼ (HTTP JSON RESTful API)
+         ▼ (SSE + HTTP JSON API)
 [ 后端服务层 (Next.js App Router API Routes) ]
    ├── POST /api/council/debate       -> 全量辩论剧本生成
    ├── POST /api/council/interrogate  -> 现场追问针对性回怼
@@ -93,9 +110,13 @@
          │
          ▼
 [ 双模弹性容灾推理引擎 (Council Engine) ]
-   ├── [主线] Google Gemini 2.5/2.0 Flash (沙盒安全提示词工程 + 11位动漫人设模型)
-   └── [兜底] 高保真自适应程序化引擎 (毫秒级零延迟、100% 离线可用、弱网路演绝不宕机)
+   ├── [主线] Google Gemini 2.5/2.0 Flash 或 OpenAI 兼容模型 (提示词边界 + 运行时结构校验)
+   └── [兜底] 高保真自适应程序化引擎 (零密钥、零网络依赖、弱网环境可完成核心流程)
 ```
+
+### 运行策略
+
+在线模型只负责生成更灵活的内容，服务端会对返回结果做归一化和字段校验；任何在线调用失败或结构异常都会切换到程序化引擎。自定义 OpenAI 兼容地址仅允许 HTTPS，并会拒绝 localhost 和私有网络目标。
 
 ---
 
@@ -112,8 +133,13 @@ npm install
 如果想使用真实的 Google Gemini 在线推理，在项目根目录创建 `.env.local`：
 ```env
 GEMINI_API_KEY=your_gemini_api_key_here
+# 可选：服务端默认 OpenAI 兼容模型
+OPENAI_API_KEY=your_openai_compatible_api_key_here
+OPENAI_BASE_URL=https://api.openai.com/v1
+# 若部署在可信反向代理后面，才开启真实访客 IP 读取
+TRUST_PROXY_HEADERS=true
 ```
-> 💡 **提示**：即使不配置 `GEMINI_API_KEY`，系统内置的高保真离线自适应程序化引擎也会自动启用，所有 11 位委员人设、辩论流程、红头公文和二审抗辩 100% 完整流畅可用！
+> 💡 **提示**：也可以在页面“设置”中选择 OpenAI 兼容接口并填写地址、模型和 Key。Key 不写入 localStorage；如果不配置在线服务，系统自动使用内置离线引擎。
 
 ### 3. 启动开发服务器
 ```bash
@@ -126,8 +152,17 @@ npm run dev
 # 验证全部 6 个 API 端点业务连通性
 node scratch/test_backend.js
 
-# 运行安全审查与防御测试套件 (XSS/注入/限流/密钥脱敏)
+# 运行安全审查与防御测试套件 (XSS/注入/限流/密钥脱敏/超大请求)
 node scratch/test_security.js
+
+# 验证 SSE 初始连接与分段事件
+node scratch/test_sse.js
+
+# TypeScript 静态检查
+npx tsc --noEmit
+
+# ESLint 检查
+npm run lint
 
 # 生产环境编译测试
 npm run build
@@ -146,6 +181,9 @@ npm run build
 3. 在 GitHub 仓库列表中找到本项目，点击 **"Import"**。
 4. 在 **Environment Variables**（环境变量）区域添加（可选）：
    - `GEMINI_API_KEY`: 填入你的 Google Gemini API 密钥。
+   - `OPENAI_API_KEY`: （可选）OpenAI 兼容服务密钥。
+   - `OPENAI_BASE_URL`: （可选）OpenAI 兼容服务地址。
+   - `TRUST_PROXY_HEADERS`: 只有部署在可信反向代理后且已确认代理会覆盖访客 IP Header 时才设置为 `true`。
 5. 点击 **"Deploy"**。
 6. 等待约 1 分钟构建完成，即可获得专属的全球 CDN 加速公网域名（如 `https://overthink-council.vercel.app`）！
 
@@ -180,6 +218,9 @@ pm2 start npm --name "overthink-council" -- start -- -p 3000
 - **图标库**：[Lucide React](https://lucide.dev/)
 - **动画与特效**：Canvas Confetti, CSS Keyframe 闪电爆闪与全屏相机震颤
 - **大模型支持**：Google Gemini 2.5 Flash / 2.0 Flash
+- **兼容接口**：OpenAI Chat Completions-compatible provider，可配置 Base URL 与模型
+- **可靠性**：SSE 流式传输、JSON 回退、程序化离线引擎、运行时输出归一化
+- **体验保障**：本机最近 3 条历史恢复、打印归档、分享海报、reduced-motion
 
 ---
 

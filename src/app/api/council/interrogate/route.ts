@@ -53,6 +53,9 @@ export async function POST(req: NextRequest) {
       summonedAgents: body.summonedAgents,
       userEcology: body.userEcology,
       apiKey: safeKey,
+      apiProvider: body.apiProvider,
+      apiBaseUrl: body.apiBaseUrl,
+      apiModel: body.apiModel,
     });
 
     return NextResponse.json(

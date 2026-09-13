@@ -73,7 +73,7 @@ export function playObjection() {
   const now = ctx.currentTime;
   
   // 铜管刺音 (Brass hit)
-  [220, 277.18, 329.63, 440].forEach((freq, i) => {
+  [220, 277.18, 329.63, 440].forEach((freq) => {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = "sawtooth";

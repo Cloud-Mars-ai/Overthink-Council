@@ -88,27 +88,37 @@ export function sanitizeEcologyProfile(ecology: unknown): UserEcologyProfile | n
       : "gpa"
   ) as UserEcologyProfile["primaryAnxiety"];
 
+  const fallbackPowerMap: Record<AgentId, number> = {
+    gpa: 30,
+    sleep: 10,
+    happiness: 25,
+    wallet: 15,
+    social: 20,
+    ambition: 0,
+    future: 0,
+    love: 0,
+    dignity: 0,
+    stomach: 0,
+    chairman: 0,
+  };
+  const rawPowerMap = typeof raw.powerMap === "object" && raw.powerMap !== null
+    ? raw.powerMap as Record<string, unknown>
+    : {};
+  const powerMap = (Object.keys(fallbackPowerMap) as AgentId[]).reduce((map, agentId) => {
+    const numericValue = Number(rawPowerMap[agentId]);
+    map[agentId] = Number.isFinite(numericValue)
+      ? Math.min(100, Math.max(0, Math.round(numericValue)))
+      : fallbackPowerMap[agentId];
+    return map;
+  }, {} as Record<AgentId, number>);
+
   return {
     codename: sanitizeUserInput(raw.codename, 24) || "高压神经元主理人",
     grade: sanitizeUserInput(raw.grade, 12) || "大二",
     majorType: sanitizeUserInput(raw.majorType, 20) || "工科计算机",
     primaryAnxiety,
     rulingParty: sanitizeUserInput(raw.rulingParty, 24) || "实用主义派",
-    powerMap: (typeof raw.powerMap === "object" && raw.powerMap !== null
-      ? (raw.powerMap as Record<AgentId, number>)
-      : {
-          gpa: 30,
-          sleep: 10,
-          happiness: 25,
-          wallet: 15,
-          social: 20,
-          ambition: 0,
-          future: 0,
-          love: 0,
-          dignity: 0,
-          stomach: 0,
-          chairman: 0,
-        }) as Record<AgentId, number>,
+    powerMap,
     calibratedAt: typeof raw.calibratedAt === "string" ? raw.calibratedAt.slice(0, 30) : new Date().toISOString(),
   };
 }
@@ -148,6 +158,10 @@ function isValidIp(ip: string): boolean {
  * 客户端真实 IP 提取器（全面适配 Zeabur / Vercel / Cloudflare 等反向代理环境）
  */
 export function getClientIp(req: NextRequest): string {
+  // 只有明确声明部署在可信反向代理后面时才读取可伪造的转发头。
+  // 未配置时使用统一的直接连接标识，避免攻击者通过伪造 X-Forwarded-For 绕过限流。
+  if (process.env.TRUST_PROXY_HEADERS !== "true") return "direct-client";
+
   // 1. Cloudflare 高度可信原生客户端 IP 头
   const cfIp = req.headers.get("cf-connecting-ip");
   if (cfIp && isValidIp(cfIp.trim())) return cfIp.trim();

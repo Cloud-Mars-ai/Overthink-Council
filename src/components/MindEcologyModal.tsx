@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { UserEcologyProfile, AgentId } from "@/lib/types";
 import { AGENT_PROFILES } from "@/lib/agents-data";
 import { CharacterAvatar } from "@/components/CharacterAvatar";
@@ -14,13 +14,8 @@ import {
   Crown,
   Scale,
   Brain,
-  Zap,
   Flame,
-  Shield,
-  Heart,
   BookOpen,
-  Coffee,
-  Wallet,
   X,
 } from "lucide-react";
 
@@ -113,6 +108,15 @@ const ANXIETY_OPTIONS = [
   },
 ];
 
+const MAJOR_OPTIONS = [
+  { id: "代码/工程", emoji: "💻", desc: "项目、实验、代码和工程 deadline 更容易成为压力来源" },
+  { id: "医护/生命科学", emoji: "🧬", desc: "值班、实验、资格考试与长期训练共同占用精力" },
+  { id: "商科/经管", emoji: "📈", desc: "实习、绩点、人脉与就业竞争需要一起权衡" },
+  { id: "文科/传媒", emoji: "✍️", desc: "表达、作品、阅读与不确定的职业路径反复拉扯" },
+  { id: "艺术/设计", emoji: "🎨", desc: "灵感、作品集、审美自评和创作节奏最容易消耗心力" },
+  { id: "其他专业", emoji: "🧭", desc: "用通用的大学生生存模型，按你的主要焦虑动态调整" },
+];
+
 const DISPOSITION_OPTIONS = [
   {
     id: "风控保命同盟",
@@ -163,6 +167,7 @@ export const MindEcologyModal: React.FC<MindEcologyModalProps> = ({
 }) => {
   const [step, setStep] = useState<number>(1);
   const [grade, setGrade] = useState<string>(existingProfile?.grade || "大二大三");
+  const [majorType, setMajorType] = useState<string>(existingProfile?.majorType || "其他专业");
   const [primaryAnxiety, setPrimaryAnxiety] = useState<UserEcologyProfile["primaryAnxiety"]>(
     existingProfile?.primaryAnxiety || "gpa"
   );
@@ -174,6 +179,21 @@ export const MindEcologyModal: React.FC<MindEcologyModalProps> = ({
   );
   const [isDone, setIsDone] = useState<boolean>(false);
   const [generatedProfile, setGeneratedProfile] = useState<UserEcologyProfile | null>(null);
+
+  useEffect(() => {
+    if (!isOpen || !existingProfile) return;
+    const syncId = window.setTimeout(() => {
+      setGrade(existingProfile.grade || "大二大三");
+      setMajorType(existingProfile.majorType || "其他专业");
+      setPrimaryAnxiety(existingProfile.primaryAnxiety || "gpa");
+      setRulingParty(existingProfile.rulingParty || "风控保命同盟");
+      setCodename(existingProfile.codename || "某不知名早八受害者");
+      setStep(1);
+      setIsDone(false);
+      setGeneratedProfile(null);
+    }, 0);
+    return () => window.clearTimeout(syncId);
+  }, [existingProfile, isOpen]);
 
   if (!isOpen) return null;
 
@@ -207,6 +227,27 @@ export const MindEcologyModal: React.FC<MindEcologyModalProps> = ({
     } else if (grade === "研究生") {
       map.sleep += 6;
       map.gpa += 4;
+    }
+
+    // 4. 专业背景权重：让画像真正影响后续召集与裁决语气
+    if (majorType === "代码/工程") {
+      map.gpa += 5;
+      map.ambition += 4;
+    } else if (majorType === "医护/生命科学") {
+      map.sleep += 5;
+      map.gpa += 4;
+    } else if (majorType === "商科/经管") {
+      map.wallet += 4;
+      map.social += 4;
+      map.ambition += 3;
+    } else if (majorType === "文科/传媒") {
+      map.happiness += 3;
+      map.love += 3;
+      map.future += 3;
+    } else if (majorType === "艺术/设计") {
+      map.happiness += 5;
+      map.love += 3;
+      map.future += 3;
     }
 
     // 2. 核心焦虑源强化 (+12)
@@ -259,7 +300,7 @@ export const MindEcologyModal: React.FC<MindEcologyModalProps> = ({
     const profile: UserEcologyProfile = {
       codename: codename.trim() || "某不知名早八受害者",
       grade,
-      majorType: "大学全学科",
+      majorType,
       primaryAnxiety,
       rulingParty,
       powerMap,
@@ -295,8 +336,15 @@ export const MindEcologyModal: React.FC<MindEcologyModalProps> = ({
     onClose();
   };
 
+  const handleClose = () => {
+    setStep(1);
+    setIsDone(false);
+    setGeneratedProfile(null);
+    onClose();
+  };
+
   return (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 overflow-y-auto bg-black/85 backdrop-blur-2xl animate-fadeIn">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 overflow-y-auto bg-black/85 backdrop-blur-2xl animate-fadeIn" role="dialog" aria-modal="true" aria-labelledby="ecology-dialog-title">
       <div className="relative w-full max-w-2xl rounded-2xl sm:rounded-3xl border border-cyan-500/40 bg-[#090d1c] p-5 sm:p-8 shadow-[0_0_80px_rgba(6,182,212,0.25)] text-white overflow-hidden my-auto transition-all">
         {/* 背景炫彩光晕 */}
         <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-cyan-500/20 blur-3xl pointer-events-none" />
@@ -310,7 +358,7 @@ export const MindEcologyModal: React.FC<MindEcologyModalProps> = ({
                 <Brain className="h-4 w-4" />
               </div>
               <div>
-                <h2 className="text-base sm:text-xl font-serif font-black tracking-wide text-white flex items-center gap-2">
+                <h2 id="ecology-dialog-title" className="text-base sm:text-xl font-serif font-black tracking-wide text-white flex items-center gap-2">
                   <span>脑内神经元初始校准仪式</span>
                   <span className="rounded-full bg-cyan-950 border border-cyan-500/60 px-2 py-0.2 text-[10px] font-mono text-cyan-300 font-bold hidden sm:inline">
                     生态建构
@@ -322,15 +370,15 @@ export const MindEcologyModal: React.FC<MindEcologyModalProps> = ({
               </div>
             </div>
 
-            {/* 关闭/跳过 */}
-            {existingProfile && (
-              <button
-                onClick={onClose}
-                className="rounded-lg p-1.5 text-zinc-400 hover:text-white hover:bg-white/[0.06] transition"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
+            {/* 关闭/跳过：校准是增强项，不应阻塞首次体验 */}
+            <button
+              onClick={handleClose}
+              aria-label={existingProfile ? "关闭脑内生态校准" : "稍后再做脑内生态校准"}
+              className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] text-zinc-400 hover:bg-white/[0.06] hover:text-white transition"
+            >
+              <span>{existingProfile ? "关闭" : "稍后校准"}</span>
+              <X className="h-4 w-4" />
+            </button>
           </div>
 
           {/* 进度条 */}
@@ -398,6 +446,31 @@ export const MindEcologyModal: React.FC<MindEcologyModalProps> = ({
                       </button>
                     );
                   })}
+                </div>
+
+                <div className="rounded-2xl border border-white/[0.08] bg-zinc-950/50 p-3.5">
+                  <div className="mb-2 text-[11px] font-bold text-cyan-300">专业背景（用于调整委员权重）</div>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {MAJOR_OPTIONS.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => {
+                          setMajorType(option.id);
+                          playVoteTick();
+                        }}
+                        className={`rounded-xl border px-2.5 py-2 text-left transition ${
+                          majorType === option.id
+                            ? "border-cyan-400 bg-cyan-950/60 text-white ring-1 ring-cyan-400/70"
+                            : "border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-cyan-700 hover:text-white"
+                        }`}
+                        title={option.desc}
+                      >
+                        <span className="mr-1">{option.emoji}</span>
+                        <span className="text-[11px] font-semibold">{option.id}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}

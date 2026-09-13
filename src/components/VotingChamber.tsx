@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { ProposalPlan, AgentVote, CouncilResolution } from "@/lib/types";
 import { AGENT_PROFILES } from "@/lib/agents-data";
 import { CharacterAvatar } from "@/components/CharacterAvatar";
@@ -13,8 +13,6 @@ import {
   AlertOctagon,
   RefreshCw,
   FileText,
-  Stamp,
-  Sparkles,
   Share2,
   Zap,
   TrendingUp,
@@ -27,7 +25,7 @@ interface VotingChamberProps {
   plans: ProposalPlan[];
   votes: AgentVote[];
   resolution: CouncilResolution;
-  onAcceptVerdict: () => void;
+  onAcceptVerdict: (planId?: ProposalPlan["id"]) => void;
   onRejectVerdict: () => void;
   onOpenAppeal: () => void;
   onShareResolution: () => void;
@@ -46,8 +44,34 @@ export const VotingChamber: React.FC<VotingChamberProps> = ({
   const [revealedVotes, setRevealedVotes] = useState<number>(0);
   const [verdictTab, setVerdictTab] = useState<"red_header" | "cyber">("red_header");
   const [flipAgentId, setFlipAgentId] = useState<string | null>(null);
-  const [userVotedPlan, setUserVotedPlan] = useState<string | null>(null);
+  const [userVotedPlan, setUserVotedPlan] = useState<ProposalPlan["id"] | null>(null);
   const decisiveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const gavelTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const winningPlan = resolution.winningPlan;
+
+  const triggerGavel = useCallback((chosenPlanId?: ProposalPlan["id"]) => {
+    if (decisiveTimerRef.current) clearTimeout(decisiveTimerRef.current);
+    if (gavelTimerRef.current) clearTimeout(gavelTimerRef.current);
+    const finalPlanId = chosenPlanId || userVotedPlan || winningPlan.id;
+    setUserVotedPlan(finalPlanId);
+    setPhase("gavel");
+    playGavel();
+    gavelTimerRef.current = setTimeout(() => {
+      setPhase("verdict");
+      playStamp();
+      try {
+        confetti({
+          particleCount: 60,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ["#d92626", "#06b6d4", "#38bdf8", "#fbbf24", "#8b5cf6"],
+        });
+      } catch {
+        // ignore
+      }
+    }, 750);
+  }, [userVotedPlan, winningPlan.id]);
 
   // 倒戈委员小巧思设定（第3或第4票触发）
   const flipIndex = Math.min(votes.length - 1, Math.max(2, Math.floor(votes.length * 0.6)));
@@ -86,30 +110,14 @@ export const VotingChamber: React.FC<VotingChamberProps> = ({
         if (decisiveTimerRef.current) clearTimeout(decisiveTimerRef.current);
       };
     }
-  }, [phase]);
+  }, [phase, triggerGavel]);
 
-  const triggerGavel = (chosenPlanId?: string) => {
+  useEffect(() => () => {
     if (decisiveTimerRef.current) clearTimeout(decisiveTimerRef.current);
-    if (chosenPlanId) setUserVotedPlan(chosenPlanId);
-    setPhase("gavel");
-    playGavel();
-    setTimeout(() => {
-      setPhase("verdict");
-      playStamp();
-      try {
-        confetti({
-          particleCount: 60,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: ["#d92626", "#06b6d4", "#38bdf8", "#fbbf24", "#8b5cf6"],
-        });
-      } catch {
-        // ignore
-      }
-    }, 750);
-  };
+    if (gavelTimerRef.current) clearTimeout(gavelTimerRef.current);
+  }, []);
 
-  const winningPlan = resolution.winningPlan;
+  const effectiveWinningPlan = plans.find((plan) => plan.id === userVotedPlan) || winningPlan;
 
   // 实时统计各方案当前得票
   const currentVotes = votes.slice(0, revealedVotes);
@@ -120,6 +128,7 @@ export const VotingChamber: React.FC<VotingChamberProps> = ({
   const pctA = Math.round((planACount / totalCount) * 100);
   const pctB = Math.round((planBCount / totalCount) * 100);
   const pctC = Math.round((planCCount / totalCount) * 100);
+  const effectiveWinningPct = effectiveWinningPlan.id === "A" ? pctA : effectiveWinningPlan.id === "B" ? pctB : pctC;
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-5 px-1 sm:px-0">
@@ -285,23 +294,43 @@ export const VotingChamber: React.FC<VotingChamberProps> = ({
             “当事人拥有最后【一锤定音权】”
           </h2>
           <p className="mt-2 text-xs sm:text-sm text-zinc-300 max-w-lg mx-auto">
-            委员会各智能体表决完毕，【{winningPlan.title}】获得最高票。作为大脑唯一当事人，你可立即加盖最终批准，平息纷争！
+            委员会各智能体表决完毕，【{winningPlan.title}】获得最高票。你也可以改选其他方案，作为大脑唯一当事人加盖最终批准。
           </p>
 
-          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto">
+          <div className="mx-auto mt-6 grid max-w-2xl grid-cols-1 gap-2 sm:grid-cols-3">
+            {plans.map((plan) => (
+              <button
+                key={plan.id}
+                type="button"
+                onClick={() => setUserVotedPlan(plan.id)}
+                className={`rounded-xl border px-3 py-3 text-left transition ${
+                  (userVotedPlan || winningPlan.id) === plan.id
+                    ? "border-cyan-400 bg-cyan-950/60 text-white ring-1 ring-cyan-400/60"
+                    : "border-zinc-700 bg-zinc-900/70 text-zinc-400 hover:border-cyan-500 hover:text-white"
+                }`}
+              >
+                <span className="font-mono text-[10px] text-cyan-300">{plan.id} 案</span>
+                <span className="mt-1 block text-xs font-bold">{plan.title}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <button
-              onClick={() => triggerGavel(winningPlan.id)}
+              type="button"
+              onClick={() => triggerGavel(userVotedPlan || winningPlan.id)}
               className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 px-6 py-3 text-sm font-bold text-white shadow-[0_0_30px_rgba(6,182,212,0.5)] hover:brightness-110 active:scale-95 transition"
             >
               <Gavel className="h-4 w-4" />
-              <span>一锤定音，批准【{winningPlan.id} 案】！</span>
+              <span>一锤定音，批准【{userVotedPlan || winningPlan.id} 案】！</span>
             </button>
 
             <button
-              onClick={() => triggerGavel("B")}
+              type="button"
+              onClick={() => triggerGavel()}
               className="w-full sm:w-auto flex items-center justify-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-xs font-semibold text-zinc-300 hover:border-cyan-500 hover:text-white transition"
             >
-              <span>顺其自然（直接宣判）</span>
+              <span>沿用最高票方案</span>
             </button>
           </div>
 
@@ -368,8 +397,8 @@ export const VotingChamber: React.FC<VotingChamberProps> = ({
           {/* 视图 A: 正式红头文件 (Official Red Header Document) */}
           {verdictTab === "red_header" ? (
             <RedHeaderDocument
-              resolution={resolution}
-              winningPlan={winningPlan}
+              resolution={{ ...resolution, winningPlan: effectiveWinningPlan }}
+              winningPlan={effectiveWinningPlan}
               onAccept={onAcceptVerdict}
               onReject={onRejectVerdict}
               onOpenAppeal={onOpenAppeal}
@@ -404,7 +433,7 @@ export const VotingChamber: React.FC<VotingChamberProps> = ({
                     表决通过：【{winningPlan.title}】
                   </span>
                   <span className="text-[11px] sm:text-xs text-zinc-400">
-                    得票率：{pctA}%
+                    得票率：{effectiveWinningPct}%（委员会票）
                   </span>
                 </div>
               </div>
@@ -446,7 +475,7 @@ export const VotingChamber: React.FC<VotingChamberProps> = ({
                 </button>
 
                 <button
-                  onClick={onAcceptVerdict}
+                  onClick={() => onAcceptVerdict(effectiveWinningPlan.id)}
                   className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-[0_0_25px_rgba(6,182,212,0.4)] transition hover:brightness-110 active:scale-95"
                 >
                   <CheckCircle2 className="h-4 w-4" />

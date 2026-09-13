@@ -11,6 +11,15 @@ export type AgentId =
   | "stomach"    // 特派委员：胃部
   | "chairman";  // 主席
 
+export type ApiProvider = "gemini" | "openai" | "procedural";
+
+export interface ApiConfig {
+  provider: ApiProvider;
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+}
+
 export interface AgentProfile {
   id: AgentId;
   name: string;
@@ -82,6 +91,10 @@ export interface CouncilResolution {
   stampDate: string;
   appealCount: number;
   newEvidence?: string;
+  nextAction?: string;
+  actionWindow?: string;
+  confidence?: number;
+  assumptions?: string[];
 }
 
 export interface PresetTopic {

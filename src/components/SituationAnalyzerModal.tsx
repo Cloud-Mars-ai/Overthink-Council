@@ -5,7 +5,7 @@ import { AgentId } from "@/lib/types";
 import { AGENT_PROFILES } from "@/lib/agents-data";
 import { CharacterAvatar } from "@/components/CharacterAvatar";
 import { playBell, playVoteTick } from "@/lib/audio";
-import { ShieldAlert, Users, Sparkles, Scale, Zap } from "lucide-react";
+import { Users, Sparkles, Zap } from "lucide-react";
 
 interface SituationAnalyzerModalProps {
   caseNumber: string;
@@ -14,6 +14,7 @@ interface SituationAnalyzerModalProps {
   urgency: string;
   keyConflict: string;
   summonedAgentIds: AgentId[];
+  source?: "gemini" | "openai" | "procedural" | "preset";
   onEnterCourt: () => void;
 }
 
@@ -24,6 +25,7 @@ export const SituationAnalyzerModal: React.FC<SituationAnalyzerModalProps> = ({
   urgency,
   keyConflict,
   summonedAgentIds,
+  source = "procedural",
   onEnterCourt,
 }) => {
   const [revealedCount, setRevealedCount] = useState(0);
@@ -45,7 +47,7 @@ export const SituationAnalyzerModal: React.FC<SituationAnalyzerModalProps> = ({
   }, [summonedAgentIds]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 sm:p-4 backdrop-blur-md animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 sm:p-4 backdrop-blur-md animate-fadeIn" role="dialog" aria-modal="true" aria-labelledby="situation-dialog-title">
       <div className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl sm:rounded-3xl border border-cyan-500/50 bg-[#0c1020] p-5 sm:p-8 shadow-[0_0_60px_rgba(6,182,212,0.25)]">
         {/* 背景赛博光晕 */}
         <div className="absolute top-0 right-0 h-48 w-48 rounded-full bg-cyan-500/15 blur-3xl pointer-events-none" />
@@ -78,9 +80,12 @@ export const SituationAnalyzerModal: React.FC<SituationAnalyzerModalProps> = ({
             </span>
           </div>
 
-          <h2 className="font-serif text-lg sm:text-2xl font-black leading-snug text-white">
+          <h2 id="situation-dialog-title" className="font-serif text-lg sm:text-2xl font-black leading-snug text-white">
             {topicTitle}
           </h2>
+          <div className="mt-2 inline-flex rounded-full border border-zinc-700 bg-zinc-950/60 px-2.5 py-1 text-[10px] text-zinc-300">
+            生成方式：{source === "gemini" ? "Gemini" : source === "openai" ? "OpenAI 兼容接口" : source === "preset" ? "经典卷宗" : "本地离线引擎"}
+          </div>
 
           <div className="rounded-2xl border border-cyan-900/40 bg-zinc-950/80 p-3 text-xs text-zinc-300">
             <span className="font-bold text-cyan-400">核心冲突焦点：</span>

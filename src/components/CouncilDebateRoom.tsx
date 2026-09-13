@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { CouncilSpeech, AgentId } from "@/lib/types";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { ApiConfig, CouncilSpeech, AgentId } from "@/lib/types";
 import { AGENT_PROFILES } from "@/lib/agents-data";
-import { playVoteTick, playGavel, playAlarm, playObjection, playTextBlip, playTypewriterKey } from "@/lib/audio";
+import { playGavel, playObjection, playTextBlip, playTypewriterKey } from "@/lib/audio";
 import { generateInterrogationResponse } from "@/lib/council-engine";
 import { CharacterAvatar } from "@/components/CharacterAvatar";
 import {
@@ -12,7 +12,6 @@ import {
   Play,
   Pause,
   AlertTriangle,
-  ShieldCheck,
   Send,
   Sparkles,
   MessageCircle,
@@ -28,6 +27,7 @@ interface CouncilDebateRoomProps {
   speeches: CouncilSpeech[];
   onFinishDebate: () => void;
   summonedAgentIds?: AgentId[];
+  apiConfig?: ApiConfig;
 }
 
 const QUICK_CHALLENGES = [
@@ -43,40 +43,45 @@ export const CouncilDebateRoom: React.FC<CouncilDebateRoomProps> = ({
   speeches,
   onFinishDebate,
   summonedAgentIds,
+  apiConfig,
 }) => {
   const [currentIdx, setCurrentIdx] = useState<number>(0);
   const [autoPlay, setAutoPlay] = useState<boolean>(true);
   const [isSlowMode, setIsSlowMode] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<"visual_novel" | "chat_feed">("visual_novel");
   const [userComment, setUserComment] = useState<string>("");
-  const [liveSpeeches, setLiveSpeeches] = useState<CouncilSpeech[]>([]);
+  const [liveSpeeches, setLiveSpeeches] = useState<CouncilSpeech[]>(() => speeches);
   const [isAnswering, setIsAnswering] = useState<boolean>(false);
   const [showObjectionBanner, setShowObjectionBanner] = useState<boolean>(false);
   const [isScreenRumbling, setIsScreenRumbling] = useState<boolean>(false);
   const [streamedText, setStreamedText] = useState<string>("");
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setLiveSpeeches(speeches);
-  }, [speeches]);
+  const objectionTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const userSpeechIdRef = useRef(0);
 
   // 全屏鲜红异议与镜头震颤触发器
-  const triggerObjectionEffect = () => {
+  const triggerObjectionEffect = useCallback(() => {
     playObjection();
     setShowObjectionBanner(true);
     setIsScreenRumbling(true);
     if (typeof document !== "undefined") {
       document.body.classList.add("animate-camera-shake");
     }
-    setTimeout(() => {
+    if (objectionTimerRef.current) clearTimeout(objectionTimerRef.current);
+    objectionTimerRef.current = setTimeout(() => {
       setShowObjectionBanner(false);
       setIsScreenRumbling(false);
       if (typeof document !== "undefined") {
         document.body.classList.remove("animate-camera-shake");
       }
     }, 1600);
-  };
+  }, []);
+
+  useEffect(() => () => {
+    if (objectionTimerRef.current) clearTimeout(objectionTimerRef.current);
+    if (typeof document !== "undefined") document.body.classList.remove("animate-camera-shake");
+  }, []);
 
   // 每当发言切换时，音效与异议判定触发
   useEffect(() => {
@@ -94,27 +99,22 @@ export const CouncilDebateRoom: React.FC<CouncilDebateRoomProps> = ({
       sp.content.includes("慢着") ||
       sp.content.includes("且慢")
     ) {
-      triggerObjectionEffect();
+      const effectTimer = window.setTimeout(() => triggerObjectionEffect(), 0);
+      return () => window.clearTimeout(effectTimer);
     } else {
       playTextBlip();
     }
-  }, [currentIdx, liveSpeeches]);
+  }, [currentIdx, liveSpeeches, triggerObjectionEffect]);
 
   // 逐字流式打字机效果 (Typewriter Engine + 拟真机械键盘微击音)
   useEffect(() => {
     const sp = liveSpeeches[currentIdx];
-    if (!sp || !sp.content) {
-      setStreamedText("");
-      setIsTyping(false);
-      return;
-    }
+    if (!sp?.content) return;
 
     const fullContent = sp.content;
     let charIdx = 0;
-    setIsTyping(true);
-    setStreamedText("");
 
-    let timeoutId: NodeJS.Timeout;
+    let timeoutId: NodeJS.Timeout | undefined;
 
     const typeNextChar = () => {
       if (charIdx < fullContent.length) {
@@ -139,10 +139,15 @@ export const CouncilDebateRoom: React.FC<CouncilDebateRoomProps> = ({
       }
     };
 
-    timeoutId = setTimeout(typeNextChar, 120);
+    const startTimer = setTimeout(() => {
+      setIsTyping(true);
+      setStreamedText("");
+      timeoutId = setTimeout(typeNextChar, 120);
+    }, 0);
 
     return () => {
-      clearTimeout(timeoutId);
+      clearTimeout(startTimer);
+      if (timeoutId) clearTimeout(timeoutId);
     };
   }, [currentIdx, liveSpeeches, isSlowMode]);
 
@@ -191,7 +196,7 @@ export const CouncilDebateRoom: React.FC<CouncilDebateRoomProps> = ({
 
       return () => clearTimeout(timer);
     }
-  }, [currentIdx, autoPlay, isSlowMode, liveSpeeches.length, isAnswering, isTyping]);
+  }, [currentIdx, autoPlay, isSlowMode, liveSpeeches, isAnswering, isTyping]);
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -209,7 +214,7 @@ export const CouncilDebateRoom: React.FC<CouncilDebateRoomProps> = ({
     setIsAnswering(true);
 
     const userSpeech: CouncilSpeech = {
-      id: `user_${Date.now()}`,
+      id: `user_${userSpeechIdRef.current++}`,
       agentId: "dignity",
       agentName: "当事人（脑细胞总动员）",
       phase: "interjection",
@@ -230,6 +235,10 @@ export const CouncilDebateRoom: React.FC<CouncilDebateRoomProps> = ({
             summonedAgentIds && summonedAgentIds.length > 0
               ? summonedAgentIds
               : ["gpa", "sleep", "happiness", "future"],
+          apiKey: apiConfig?.apiKey,
+          apiProvider: apiConfig?.provider,
+          apiBaseUrl: apiConfig?.baseUrl,
+          apiModel: apiConfig?.model,
         }),
       });
       if (res.ok) {

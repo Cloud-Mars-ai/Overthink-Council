@@ -5,7 +5,7 @@ import { AGENT_PROFILES } from "@/lib/agents-data";
 import { AgentId } from "@/lib/types";
 import { CharacterAvatar } from "@/components/CharacterAvatar";
 import { playTextBlip } from "@/lib/audio";
-import { Users, Shield, Heart, Zap, Sparkles, BookOpen, Skull, AlertCircle, Quote } from "lucide-react";
+import { Users, Shield, Sparkles, Skull, AlertCircle, Quote } from "lucide-react";
 
 // 十一大脑内委员专属深度人设档案（不启动辩论，纯沉浸式人设鉴赏）
 interface AgentLoreArchive {

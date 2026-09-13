@@ -9,10 +9,8 @@ import {
   Sparkles,
   Zap,
   TrendingUp,
-  Award,
   HeartHandshake,
   Swords,
-  Users,
   Flame,
   Scale,
   SlidersHorizontal,
@@ -597,4 +595,3 @@ export const MindParliamentBento: React.FC<MindParliamentBentoProps> = ({
     </section>
   );
 };
-

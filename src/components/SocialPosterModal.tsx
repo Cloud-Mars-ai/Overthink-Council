@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, Download, Copy, Check, Sparkles, Share2, ShieldCheck, Heart } from "lucide-react";
+import { X, Download, Copy, Check, Sparkles, Heart } from "lucide-react";
 
 interface SocialPosterModalProps {
   isOpen: boolean;
@@ -50,6 +50,9 @@ export const SocialPosterModal: React.FC<SocialPosterModalProps> = ({
         if (e.target === e.currentTarget) onClose();
       }}
       className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 bg-black/90 backdrop-blur-2xl animate-fadeIn overflow-y-auto cursor-pointer"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="poster-dialog-title"
     >
       <div
         onClick={(e) => e.stopPropagation()}
@@ -62,7 +65,7 @@ export const SocialPosterModal: React.FC<SocialPosterModalProps> = ({
               <Sparkles className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="text-sm sm:text-base font-bold text-white font-serif flex items-center gap-1.5">
+              <h3 id="poster-dialog-title" className="text-sm sm:text-base font-bold text-white font-serif flex items-center gap-1.5">
                 <span>小红书 / 朋友圈高清裁决长图</span>
                 <span className="text-[10px] font-sans px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40">
                   2X 超清导出
@@ -71,11 +74,16 @@ export const SocialPosterModal: React.FC<SocialPosterModalProps> = ({
               <p className="text-[11px] text-zinc-400 font-sans">
                 法定防伪公章已合成 · 可直接发动态晒出你的脑内处分令
               </p>
+              <p className="mt-1 max-w-[280px] truncate text-[10px] font-mono text-rose-300/80" title={caseTitle}>
+                本案：{caseTitle}
+              </p>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={onClose}
+            aria-label="关闭海报预览"
             className="rounded-full p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white transition"
           >
             <X className="h-5 w-5" />

@@ -45,17 +45,6 @@ export async function POST(req: NextRequest) {
     const customQuestion = sanitizeUserInput(body.customQuestion, 300);
     const safeKey = sanitizeApiKey(body.apiKey) || undefined;
 
-    // 先获取或生成完整会审脚本
-    const debateResult = await generateCouncilDebate({
-      topicId: typeof body.topicId === "string" ? body.topicId.slice(0, 50) : undefined,
-      customQuestion,
-      userEcology: body.userEcology,
-      apiKey: safeKey,
-      apiProvider: body.apiProvider,
-      summonedAgents: body.summonedAgents,
-    });
-
-    const script = debateResult.script;
     const encoder = new TextEncoder();
 
     // 构造 Server-Sent Events (SSE) 流
@@ -67,7 +56,26 @@ export async function POST(req: NextRequest) {
         };
 
         try {
-          // 1. 发送初始化连接事件
+          // 先立即发出连接状态，让客户端在模型推理期间也能给出可见反馈
+          sendEvent("connected", {
+            caseNumber: "立案中",
+            topicTitle: customQuestion || "经典卷宗议题",
+            source: body.topicId ? "preset" : body.apiProvider === "openai" ? "openai" : body.apiProvider === "procedural" ? "procedural" : "gemini",
+          });
+
+          // 在流已建立后生成脚本，避免在线模型响应期间浏览器看起来像“卡死”
+          const debateResult = await generateCouncilDebate({
+            topicId: typeof body.topicId === "string" ? body.topicId.slice(0, 50) : undefined,
+            customQuestion,
+            userEcology: body.userEcology,
+            apiKey: safeKey,
+            apiProvider: body.apiProvider,
+            apiBaseUrl: body.apiBaseUrl,
+            apiModel: body.apiModel,
+            summonedAgents: body.summonedAgents,
+          });
+          const script = debateResult.script;
+
           sendEvent("connected", {
             caseNumber: script.caseNumber,
             topicTitle: script.topicTitle,

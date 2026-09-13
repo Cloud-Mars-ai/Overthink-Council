@@ -26,7 +26,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [timeStr, setTimeStr] = useState("01:24:18");
 
   useEffect(() => {
-    setMuted(getSoundMuted());
+    const muteSync = window.setTimeout(() => setMuted(getSoundMuted()), 0);
     const interval = setInterval(() => {
       const now = new Date();
       const h = String(now.getHours()).padStart(2, "0");
@@ -34,7 +34,10 @@ export const Navbar: React.FC<NavbarProps> = ({
       const s = String(now.getSeconds()).padStart(2, "0");
       setTimeStr(`${h}:${m}:${s}`);
     }, 1000);
-    return () => clearInterval(interval);
+    return () => {
+      window.clearTimeout(muteSync);
+      clearInterval(interval);
+    };
   }, []);
 
   const toggleSound = () => {
@@ -47,7 +50,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-cyan-900/30 bg-[#080b16]/95 backdrop-blur-md">
+    <header className="sticky top-0 z-50 w-full border-b border-cyan-900/30 bg-[#080b16]/95 backdrop-blur-md print-hidden">
       {/* 顶部二次元学园流光缎带 */}
       <div className="h-1 w-full anime-header-ribbon" />
 
@@ -82,6 +85,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* 委员巡礼按钮 */}
           {onOpenRoster && (
             <button
+              type="button"
               onClick={onOpenRoster}
               className="flex items-center gap-1 rounded-xl border border-indigo-500/30 bg-indigo-950/25 px-2 sm:px-2.5 py-1 text-xs text-indigo-300 transition hover:border-indigo-400 hover:bg-indigo-900/40"
               title="查看十一脑内常任委员人设名录"
@@ -94,6 +98,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* 经典卷宗按钮 */}
           {onOpenDossiers && (
             <button
+              type="button"
               onClick={onOpenDossiers}
               className="flex items-center gap-1 rounded-xl border border-sky-500/30 bg-sky-950/25 px-2 sm:px-2.5 py-1 text-xs text-sky-300 transition hover:border-sky-400 hover:bg-sky-900/40"
               title="查看特急内耗卷宗与典型案件"
@@ -106,6 +111,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* 议会沙盘按钮 */}
           {onOpenParliament && (
             <button
+              type="button"
               onClick={onOpenParliament}
               className="flex items-center gap-1 rounded-xl border border-cyan-800/40 bg-cyan-950/30 px-2 sm:px-2.5 py-1 text-xs text-cyan-300 transition hover:border-cyan-600 hover:bg-cyan-900/40"
               title="查看 100 席脑内议会权力沙盘"
@@ -118,6 +124,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* 用户脑内生态校准状态胶囊 */}
           {userEcology ? (
             <button
+              type="button"
               onClick={onOpenCalibration}
               className="flex items-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-950/30 px-2 sm:px-2.5 py-1 text-xs text-amber-300 transition hover:border-amber-400 hover:bg-amber-900/40 shadow-[0_0_12px_rgba(245,158,11,0.2)]"
               title="点击查看并重新校准脑内神经元生态"
@@ -129,6 +136,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           ) : (
             <button
+              type="button"
               onClick={onOpenCalibration}
               className="flex items-center gap-1 rounded-xl border border-cyan-500/50 bg-cyan-950/40 px-2 sm:px-2.5 py-1 text-xs font-bold text-cyan-300 transition hover:border-cyan-300 hover:bg-cyan-900/50 shadow-[0_0_15px_rgba(6,182,212,0.35)] animate-pulse"
               title="启动脑内神经元初始校准仪式"
@@ -144,7 +152,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           <button
+            type="button"
             onClick={toggleSound}
+            aria-label={muted ? "开启音效" : "静音"}
             title={muted ? "开启音效" : "静音"}
             className="flex items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 py-1 text-xs text-zinc-300 transition hover:border-cyan-700 hover:text-white"
           >
@@ -162,7 +172,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           <button
+            type="button"
             onClick={onOpenSettings}
+            aria-label="配置大模型推理引擎"
             title="配置大模型推理引擎"
             className="flex items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-900/80 p-1.5 text-zinc-400 transition hover:border-cyan-700 hover:text-white"
           >

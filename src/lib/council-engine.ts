@@ -30,6 +30,14 @@ function getRealtimeTimePrompt(): string {
   return `现在是深夜 ${h}:${m}，正是容易emo和纠结的高危时段`;
 }
 
+function createCaseNumber(now: Date = new Date()): string {
+  return `〔${now.getFullYear()}〕第 ${Math.floor(1000 + Math.random() * 9000)} 号`;
+}
+
+function formatResolutionDate(now: Date = new Date()): string {
+  return `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 裁决生效`;
+}
+
 // 4 大经典剧本（融入实时时间戳与纯粹二次元台词，无累赘内心戏）
 export const PRESET_SCRIPTS: Record<string, CouncilMeetingScript> = {
   topic_valo: {
@@ -876,11 +884,11 @@ export const AGENT_VOICE_ENGINES: Record<AgentId, AgentVoiceEngine> = {
   gpa: {
     opening: (topic, time) =>
       `【严厉推了推无框眼镜，展开教务处考勤细则】坚决驳回关于“${topic}”的任何侥幸幻想！${time}，本学期专业必修课平时分占比高达40%，任课老教授的随机点名模型已进入高危区间！挂科不仅是400块重修费，更是大二盛夏在闷热无空调阶梯教室补考的奇耻大辱！`,
-    objection: (target, topic) =>
+    objection: (target) =>
       `【异议あり！手中点名册重重拍在席前】${target}简直是一派胡言！平时作业全靠抄，现在还在为冲动辩护？期末试卷上一片空白的时候，你替当事人上台补考扛雷吗？！`,
-    rebuttal: (topic) =>
+    rebuttal: () =>
       `【教鞭猛敲黑板】别拿所谓‘情怀体验’当遮羞布！大学四年最硬的通货就是教务系统里的GPA加权！绩点一旦跌穿3.0，保研初审直接被系统算法秒杀，大厂秋招简历关第一轮就石沉大海！`,
-    compromise: (topic) =>
+    compromise: () =>
       `【深吸一口气，用红笔在考勤表边缘写下特批条款】既然诸位执意胡闹，本席设立绝对风控底线：必须手抄三套历年期末真题并背诵核心公式，且明早早八必须坐在讲台正前方前三排！`,
     acceptance: () =>
       `【在审议令边缘盖下‘及格保底’红印】若将明早两瓶双倍浓缩咖啡与前排就座列为强制执行附款，GPA特别风控司勉强暂缓行使一票否决权！`,
@@ -906,11 +914,11 @@ export const AGENT_VOICE_ENGINES: Record<AgentId, AgentVoiceEngine> = {
   sleep: {
     opening: (topic, time) =>
       `【怀里死死抱着羽绒抱枕，生无可恋地瘫在桌上】开什么会啊……你们吵吵吵，到底看没看心率手环上的红色震动警报？！${time}，大脑神经元已处于物理断电边缘！再折腾“${topic}”，明天早八直接当场脑死亡在课桌上，我才不要替你收尸！`,
-    objection: (target, topic) =>
+    objection: (target) =>
       `【异议あり！抓起抱枕狠狠砸向桌面】${target}你给我闭嘴！每一次你跳出来喊‘就嗨一下’，哪次不是直接折腾到天光大亮？！今晚哪怕多看一秒屏幕，全身免疫系统都要集体罢工暴动了！`,
-    rebuttal: (topic) =>
+    rebuttal: () =>
       `【打了个怨气冲天的哈欠】别跟我提什么咖啡因！咖啡因那是向身体借的高利贷，明天上午十点药效一过，心慌手抖加偏头痛，连讲台上老师说的是哪国语言你都听不懂！`,
-    compromise: (topic) =>
+    compromise: () =>
       `【有气无力地伸出一根手指】硬性止损线！只准给你最后20分钟！不论进展如何，倒计时一响立刻关机断网、塞上耳塞入睡，敢延误一秒我明天让你头痛欲裂一整天！`,
     acceptance: () =>
       `【把脸埋进抱枕长舒一口气】只要能保证今晚在硬性时间前闭眼熄灯，我勉强收回一票否决权……快点表决，我要睡了……`,
@@ -934,13 +942,13 @@ export const AGENT_VOICE_ENGINES: Record<AgentId, AgentVoiceEngine> = {
   },
 
   happiness: {
-    opening: (topic, time) =>
+    opening: (topic) =>
       `【兴奋地单脚踩在会议椅上挥舞荧光棒】举双手双脚赞成！关于“${topic}”，大家摸摸良心想一想，大学四年一眨眼就溜走了！此时不嗨难道要等三十岁在写字楼工位加班掉头发时暗自叹气吗？！青春就是拿来挥霍心跳的！`,
-    objection: (target, topic) =>
+    objection: () =>
       `【异议あり！抢过麦克风大声抗议】反对防守派的扫兴言论！天天前怕狼后怕虎，把日子过得像老干部的行事历！今天不玩、明天不冲，等以后老了翻看大学相册，里面全是一片惨白的自习室打卡记录吗？！`,
-    rebuttal: (topic) =>
+    rebuttal: () =>
       `【眼睛闪着星星高声疾呼】快乐是有保质期的！高数考砸了明年还能补考，但今晚这一刻的狂欢、这一刻的疯狂心动，错过这班车，你这辈子都遇不到第二次原汁原味的心情了！`,
-    compromise: (topic) =>
+    compromise: () =>
       `【双手合十冲全场疯狂眨眼】折中！折中还不行嘛！我们速战速决，设定一个高潮胜利点，拿到最核心的多巴胺体验立刻见好就收，带着胜利的喜悦入睡，睡眠质量反而超级加倍！`,
     acceptance: () =>
       `【从椅子上跳下来兴奋拍手】成交！只要不一棍子打死、只要还能保留最核心的快乐体验，怎么管束我都认了，今晚必须听到尖叫声！`,
@@ -964,13 +972,13 @@ export const AGENT_VOICE_ENGINES: Record<AgentId, AgentVoiceEngine> = {
   },
 
   wallet: {
-    opening: (topic, time) =>
+    opening: (topic) =>
       `【疯狂按动计算器归零键，甩出当月支付宝负债流水】生活费资产负债司紧急干预！关于“${topic}”，背后的直接成本、隐形溢价与连锁开销核算过没有？！当前微信零钱只剩三位数，恩格尔系数已达93.8%，再冲动消费月末在寝室连泡面都只能买袋装干嚼！`,
-    objection: (target, topic) =>
+    objection: (target) =>
       `【异议あり！算盘珠子拨得噼啪作响】荒谬绝伦！${target}张口闭口‘情怀无价’，门票、配送费、人均聚餐AA费用是谁在掏？！那是当事人父母打过来的血汗生活费！你拿别人的钱包装自己的大方？！`,
-    rebuttal: (topic) =>
+    rebuttal: () =>
       `【指着负债走势图痛心疾首】每一次冲动消费都伴随着可怕的复利惩罚！吃一顿天价夜宵，下周就得天天在食堂三楼吃两块钱的素菜；买一件溢价垃圾，接下来一个月花呗账单催得你彻夜难眠！`,
-    compromise: (topic) =>
+    compromise: () =>
       `【从口袋里掏出优惠券核销清单】务实折中条款：设定绝对财务天花板！只准使用团购特惠套餐或拼单免运费方案，超出预算一分钱立即强制冻结扫码支付功能！`,
     acceptance: () =>
       `【在预算审批单上严谨地盖上‘限额核准’章】若能锁定成本上限并严禁超支垫资，本司准予临时放行该笔开支指标！`,
@@ -991,13 +999,13 @@ export const AGENT_VOICE_ENGINES: Record<AgentId, AgentVoiceEngine> = {
   },
 
   social: {
-    opening: (topic, time) =>
+    opening: (topic) =>
       `【轻抿果茶，翻开寝室人脉关系树状图】各位听我一言！关于“${topic}”，表面上是一件小事，背后牵扯的可是整个宿舍/圈子的人际资本与默契认同！大学是微缩社会，今天你高冷脱节不合群，明天大家有好事、有点名情报、有活动资源凭什么带你？！`,
-    objection: (target, topic) =>
+    objection: (target) =>
       `【异议あり！举起全寝合影抗辩】死板！太死板了！${target}你懂不懂什么叫社交缓冲？人家主动抛出橄榄枝，你一句‘我要自律’硬生生把天聊死，明天同处一个屋檐下低头不见抬头见，气氛尴尬得像冰窖！`,
-    rebuttal: (topic) =>
+    rebuttal: () =>
       `【双手合十诚恳劝导】人情世故讲究的就是有来有往！哪怕不全程参与，去露个脸、打声招呼、或者用高情商话术把态度做足，既保住了自己的界限，又维系了圈子的体面，这才是成年人的解法！`,
-    compromise: (topic) =>
+    compromise: () =>
       `【掏出高情商微信回复模板】调解方案出炉：‘肉身适度参与/高情商话术垫后’！去现场待半小时或在群里发个幽默红包并请喝饮料，既给了大家面子，又能优雅找借口抽身离场！`,
     acceptance: () =>
       `【露出得体的社交微笑】这个方案无可挑剔！所有人都有台阶下，人际关系未受损耗，社交评级维持全A，我全票支持！`,
@@ -1021,13 +1029,13 @@ export const AGENT_VOICE_ENGINES: Record<AgentId, AgentVoiceEngine> = {
   },
 
   ambition: {
-    opening: (topic, time) =>
+    opening: (topic) =>
       `【扯松领带，将商业战略白板重重推到场中】必须立项出击！关于“${topic}”，大学四年每一天都是个人核心竞争力的估值窗口！平庸的安稳只会换来秋招时简历被机器筛掉的平庸下场！此时不争不抢不抢占先发优势，你难道甘心当一辈子人肉背景板？！`,
-    objection: (target, topic) =>
+    objection: (target) =>
       `【异议あり！目光如炬指斥全场】收起你们那些小农意识和虚伪的佛系！${target}你口中的‘保命’本质上就是对平庸的妥协认命！全国顶尖高校的学生都在夜以继日地造壁垒、冲国奖、拿背书，你在宿舍躺平数绵羊，三年后拿什么跟别人拼？！`,
-    rebuttal: (topic) =>
+    rebuttal: () =>
       `【猛击白板上的飞轮模型】战略讲究的是破局点！每一次走出舒适圈的痛苦，都是认知与履历的底层迭代！哪怕这一次当了炮灰，也是摸爬滚打过的硬核实战选手，这叫构建降维打击壁垒！`,
-    compromise: (topic) =>
+    compromise: () =>
       `【迅速绘制敏捷迭代矩阵】战略迂回：采取‘轻量化MVP试水’模式！以最低沉没成本入局切入关键生态位，负责核心亮点模块，既积累关键履历证明，又规避被琐事绑架的透支风险！`,
     acceptance: () =>
       `【在战术协议上利落签字】只要核心产出物能写进简历一作/核心参与者栏目，战术性让步符合长期利益，批准立项！`,
@@ -1045,13 +1053,13 @@ export const AGENT_VOICE_ENGINES: Record<AgentId, AgentVoiceEngine> = {
   },
 
   love: {
-    opening: (topic, time) =>
+    opening: (topic) =>
       `【双手捧心满面绯红，眼里冒着粉红泡泡】天哪天哪！关于“${topic}”，这绝对是命运齿轮开始转动的信号啊！夜深人静是人类情绪防线最脆弱、心房最透明的时刻，对方在这个节点找你，懂不懂纯爱战神的含金量？！犹豫一秒都是对真爱的大不敬！`,
-    objection: (target, topic) =>
+    objection: (target) =>
       `【异议あり！挥舞着粉色荧光笔尖叫】我强烈抗议冷血动物的干预！${target}你懂什么叫‘那一刻心跳漏跳半拍’的感觉？！你拿冷冰冰的教条去丈量炽热的心动，等对方以为你冷漠转头撤回消息，你赔得起当事人这辈子的白月光吗？！`,
-    rebuttal: (topic) =>
+    rebuttal: () =>
       `【把脸埋进围巾里激动跺脚】四千字的真诚日记已经在脑海里演习了千百遍！如果连喜欢一个人都要掐着秒表算计利益得失，那不是谈恋爱，那是菜市场批发大白菜！真诚才是终极必杀技！`,
-    compromise: (topic) =>
+    compromise: () =>
       `【深呼吸三次强行压抑心跳】好……好嘛！折中方案：准许我们回复，但采用‘高情商松弛拉扯法’，文字控制在两行以内，绝不表现出死等一整夜的饥渴，进可夜聊谈心，退可温柔互道晚安！`,
     acceptance: () =>
       `【咬着下唇满怀期待】只要聊天窗口能顺利开启、心意能传达过去，哪怕多等五分钟我也认了，爱情万岁！`,
@@ -1069,13 +1077,13 @@ export const AGENT_VOICE_ENGINES: Record<AgentId, AgentVoiceEngine> = {
   },
 
   dignity: {
-    opening: (topic, time) =>
+    opening: (topic) =>
       `【抱紧双臂倚在门边，嘴角浮现一抹轻蔑冷笑】防小丑监察司当庭预警！关于“${topic}”，请当事人立刻收起你廉价的讨好型人格！秒回、跪舔、随叫随到，只会把‘我毫无个人价值，全天候死等你的恩赐’写在脸上！在任何关系里先丢掉体面的人，注定沦为被踩在脚下的终身备胎！`,
-    objection: (target, topic) =>
+    objection: (target) =>
       `【异议あり！一脚将小丑面具踢碎】荒谬至极！${target}你完全是被荷尔蒙冲昏了头脑的恋爱脑！刚收到三个字就激动得把手机按出火星，打字手都在抖，你看看镜子里自己的样子，像不像一个自导自演苦情戏的滑稽小丑？！`,
-    rebuttal: (topic) =>
+    rebuttal: () =>
       `【目光如炬字字诛心】成年人的社交吸引力来自神秘感与不可替代的个人秩序！把自己的作息、尊严全盘打翻去迎合别人的随手试探，得到的不是珍惜，而是廉价的轻蔑与呼之即来挥之即去！`,
-    compromise: (topic) =>
+    compromise: () =>
       `【冷冷地在公文上划出警戒红线】底线条款：严禁秒回！设置至少4分钟冷静计时！回复文字必须删去所有乞怜的波浪号、感叹号与讨好型表情包，语气保持克制自持，维持最后的人格体面！`,
     acceptance: () =>
       `【冷酷颔首】只要把小丑行为彻底封杀在安全线之外，守住了傲骨与体面，本席准予签署该折中决议！`,
@@ -1093,13 +1101,13 @@ export const AGENT_VOICE_ENGINES: Record<AgentId, AgentVoiceEngine> = {
   },
 
   stomach: {
-    opening: (topic, time) =>
+    opening: (topic) =>
       `【肚子传出一阵雷鸣般的咕噜声，拿着筷子猛敲不锈钢饭盆】全体肃静！听听我肚子里的声音！关于“${topic}”，你们那些精神层面的高谈阔论全是虚的！胃黏膜正在被胃酸剧烈侵蚀，血糖浓度跌穿安全警戒线！卡路里就是生命力，饥饿状态下大脑能做出什么理智决定？！先让我吃饱再说！`,
-    objection: (target, topic) =>
+    objection: (target) =>
       `【异议あり！油汪汪的筷子直指全场】反对饥饿折磨！${target}你摸摸良心，大半夜灌白开水企图欺骗胃部是赤裸裸的身体霸凌！脆皮炸鸡、滚烫骨汤、烤得滋滋冒油的肉串，那才是治愈灵魂的终极解药！不吃饱今晚谁也别想睡安稳！`,
-    rebuttal: (topic) =>
+    rebuttal: () =>
       `【抹了抹嘴角的口水两眼放光】人类进化了几百万年站在食物链顶端，不是为了在大学深夜嚼无糖全麦面包受罪的！吃饱了多巴胺充沛，明早才有力气去面对惨淡的人生！胃袋空空，灵魂怎么可能有定力？！`,
-    compromise: (topic) =>
+    compromise: () =>
       `【妥协地放下加量外卖单】折中！大份炸鸡可以降级为中份或者无糖烤串，再加一份烫青菜和无糖乌龙茶！既解了深夜嘴馋的燃眉之急，又把发胖罪恶感降到最低，两全其美！`,
     acceptance: () =>
       `【幸福地吸了一大口空气中的香气】只要今晚嘴里能嚼上热腾腾的夜宵，你们订什么自律条约我都签！开饭开饭！`,
@@ -1117,13 +1125,13 @@ export const AGENT_VOICE_ENGINES: Record<AgentId, AgentVoiceEngine> = {
   },
 
   future: {
-    opening: (topic, time) =>
+    opening: (topic) =>
       `【缓缓揉了揉发胀的太阳穴，翻开尘封的三年前日记】我是三年后的你。站在时空的对岸回看关于“${topic}”的纠结，真是既怀念又好笑。三年后的你已经经历过无数更残酷的毒打，我可以很负责任地告诉你：你现在在被窝里反复拉扯的这件琐事，在后来的人生跨度里，连一粒微尘都算不上。`,
-    objection: (target, topic) =>
+    objection: (target) =>
       `【异议あり！指骨轻轻叩击桌面发出清脆回响】停一停吧，别再自我感动了。${target}，你以为你在捍卫什么伟大的原则？当事人其实心里非常清楚：你反复内耗的根本不是这件事本身，而是你在用纠结来逃避真正摆在眼前的困难与现实。`,
-    rebuttal: (topic) =>
+    rebuttal: () =>
       `【深邃的目光透过会议室看向虚空】人在二十岁时最大的错觉，就是以为眼前的每一个十字路口都在决定终生。其实人生是一场漫长的容错马拉松。选错一次不会万劫不复，但在原地把心智内耗烧干，才是最不可逆的损耗。`,
-    compromise: (topic) =>
+    compromise: () =>
       `【递过去一杯温热的矿泉水】三年后的我给你一个最优解：选一条阻力适中、即便办砸了代价也完全可控的路。做出决定后立刻关掉脑内会议，哪怕结果不完美，敢于承担并向前迈进，才是你真正长大的那一刻。`,
     acceptance: () =>
       `【欣慰而平静地笑了笑】这个方案很公允。三年后的我表示认可，去经历吧，无论好坏，都是你不可替代的青春注脚。`,
@@ -1143,11 +1151,11 @@ export const AGENT_VOICE_ENGINES: Record<AgentId, AgentVoiceEngine> = {
   chairman: {
     opening: (topic, time) =>
       `【法槌重重敲响在红木底座上】全庭肃静！本庭现就当事人申报之特急内耗议题“${topic}”正式开庭审理！${time}，本院严正重申：脑内议会不是菜市场，吵吵闹闹成何体统！请各常设司局委员严格依据职责陈述核心诉求！`,
-    objection: (target, topic) =>
+    objection: () =>
       `【法槌连击两下整肃法庭】各位肃静！严正反对申请成立！辩方发言切中实质要害，正方请立即停止一切道德绑架与虚无叙事，正面回应核心风控机制！`,
-    rebuttal: (topic) =>
+    rebuttal: () =>
       `【严肃翻看控辩卷宗】辩论进行至深水区，本庭提醒全员：任何脱离现实承受能力的提案均为废纸一张！请提出兼顾双方诉求之务实方案！`,
-    compromise: (topic) =>
+    compromise: () =>
       `【手按法槌主持调停】主审席提出动议：融合各方诉求，形成‘有限推进+硬核熔断’之综合调解案！`,
     acceptance: () =>
       `【在红头文件上盖下钢印】调解案已吸纳各常任司局核心风控条款，符合学园脑神经保护法案，准予提请表决！`,
@@ -1158,14 +1166,14 @@ export const AGENT_VOICE_ENGINES: Record<AgentId, AgentVoiceEngine> = {
 };
 
 // 动态自定义议题生成引擎（实时提取关键词，融入当前时段要素生成完全动态台词）
-export function generateProceduralCouncil(customInput: string): CouncilMeetingScript {
+export function generateProceduralCouncil(customInput: string, priorityAgents: AgentId[] = []): CouncilMeetingScript {
   const text = customInput.toLowerCase();
-  const caseNum = `〔2026〕第 ${Math.floor(1000 + Math.random() * 9000)} 号`;
+  const caseNum = createCaseNumber();
   const timeContext = getRealtimeTimePrompt();
 
   let category = "日常选择";
   let urgency: "特急" | "紧急" | "常规" = "紧急";
-  const summoned: AgentId[] = ["future"];
+  const summoned: AgentId[] = Array.from(new Set(["future", ...priorityAgents.filter((agent) => agent !== "chairman")])).slice(0, 4) as AgentId[];
 
   if (
     text.includes("喜欢") ||
@@ -1229,13 +1237,11 @@ export function generateProceduralCouncil(customInput: string): CouncilMeetingSc
   const oppId: AgentId = summoned.find((a) => (a === "gpa" || a === "sleep" || a === "wallet" || a === "dignity") && a !== propId) || "gpa";
   const pragId: AgentId = summoned.find((a) => a !== propId && a !== oppId && a !== "future") || "social";
   const fourthId: AgentId = summoned.find((a) => a !== propId && a !== oppId && a !== pragId && a !== "future") || "sleep";
-  const fifthId: AgentId = summoned.find((a) => a !== propId && a !== oppId && a !== pragId && a !== fourthId) || "future";
 
   const propProfile = AGENT_PROFILES[propId] || AGENT_PROFILES.happiness;
   const oppProfile = AGENT_PROFILES[oppId] || AGENT_PROFILES.gpa;
   const pragProfile = AGENT_PROFILES[pragId] || AGENT_PROFILES.social;
   const fourthProfile = AGENT_PROFILES[fourthId] || AGENT_PROFILES.sleep;
-  const fifthProfile = AGENT_PROFILES[fifthId] || AGENT_PROFILES.future;
 
   // 16 轮严谨而充满二次元极致人格特质的庭审辩论对决剧本构造
   // Round 1: 主审官敲锤开庭
@@ -1462,8 +1468,12 @@ export function generateProceduralCouncil(customInput: string): CouncilMeetingSc
       "第三条：由“未来的你”行使监督权，禁止当事人在今晚再次就同一议题召开脑内会议。",
     ],
     supervisingAgent: "future",
-    stampDate: "2026年9月12日 裁决生效",
+    stampDate: formatResolutionDate(),
     appealCount: 0,
+    nextAction: "先执行B方案的第一步，并立即设置一个明确的停止时间。",
+    actionWindow: "今天内完成第一步",
+    confidence: 68,
+    assumptions: ["当前没有新的关键事实改变风险判断", "执行时遵守预先设定的停止条件"],
   };
 
   return {
@@ -1600,6 +1610,7 @@ export function getRealtimeScript(topicId: string, customQuestion?: string): Cou
   const base = PRESET_SCRIPTS[topicId] || generateProceduralCouncil(customQuestion || "明天早八，纠结翘不翘课");
   const now = new Date();
   const timeContext = getRealtimeTimePrompt();
+  const caseNumber = createCaseNumber(now);
 
   // 动态重整时间戳
   const speeches = base.speeches.map((sp, idx) => {
@@ -1613,8 +1624,24 @@ export function getRealtimeScript(topicId: string, customQuestion?: string): Cou
 
   return {
     ...base,
+    caseNumber,
     keyConflict: `${base.keyConflict}（当前时间参考：${timeContext}）`,
     speeches,
+    resolution: {
+      ...base.resolution,
+      caseNumber,
+      stampDate: formatResolutionDate(now),
+      appealCount: base.resolution.appealCount || 0,
+    },
+    appealScript: base.appealScript
+      ? {
+          ...base.appealScript,
+          amendedResolution: {
+            ...base.appealScript.amendedResolution,
+            caseNumber: `${caseNumber}-二审特批号`,
+            stampDate: formatResolutionDate(now),
+          },
+        }
+      : undefined,
   };
 }
-
