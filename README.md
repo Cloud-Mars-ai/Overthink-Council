@@ -5,7 +5,7 @@
 
 一句话定位：把大学生日常纠结拆成多种价值观的公开辩论，并收束成一份可执行、可复盘的红头决议。
 
-📘 [项目文档与 PRD](docs/PROJECT_PRD.md) · 🔗 [GitHub 仓库](https://github.com/Felix77720/Infighting-Commitee)
+📘 [项目文档与 PRD（Markdown）](docs/PROJECT_PRD.md) · 📝 [Word 版 PRD](docs/PROJECT_PRD.docx) · 🔗 [GitHub 仓库](https://github.com/Felix77720/Infighting-Commitee)
 
 [![Next.js](https://img.shields.io/badge/Next.js-16.3.4-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19.2.8-blue?style=for-the-badge&logo=react)](https://react.dev/)
