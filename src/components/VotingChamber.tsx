@@ -212,11 +212,10 @@ export const VotingChamber: React.FC<VotingChamberProps> = ({
               return (
                 <div
                   key={p.id}
-                  className={`rounded-2xl border p-3.5 sm:p-4 transition-all duration-300 relative overflow-hidden ${
-                    isLeading
+                  className={`rounded-2xl border p-3.5 sm:p-4 transition-all duration-300 relative overflow-hidden ${isLeading
                       ? "border-cyan-400/60 bg-cyan-950/30 shadow-[0_0_25px_rgba(6,182,212,0.25)] ring-1 ring-cyan-500/30"
                       : "border-white/[0.08] bg-zinc-900/40"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-zinc-800 text-xs font-bold text-white border border-zinc-700 font-mono">
@@ -246,12 +245,11 @@ export const VotingChamber: React.FC<VotingChamberProps> = ({
                 const prof = AGENT_PROFILES[v.agentId];
                 return (
                   <div
-                    key={`${v.agentId}_${i}`}
-                    className={`flex flex-col justify-between rounded-xl border p-3 text-xs transition-all duration-300 ${
-                      isRevealed
+                    key={v.agentId}
+                    className={`flex flex-col justify-between rounded-xl border p-3 text-xs transition-all duration-300 ${isRevealed
                         ? "border-cyan-500/40 bg-[#0e1428] opacity-100 scale-100 shadow-[0_0_15px_rgba(6,182,212,0.1)]"
                         : "border-white/[0.04] bg-zinc-950/40 opacity-25 scale-95"
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-2 truncate">
@@ -303,11 +301,10 @@ export const VotingChamber: React.FC<VotingChamberProps> = ({
                 key={plan.id}
                 type="button"
                 onClick={() => setUserVotedPlan(plan.id)}
-                className={`rounded-xl border px-3 py-3 text-left transition ${
-                  (userVotedPlan || winningPlan.id) === plan.id
+                className={`rounded-xl border px-3 py-3 text-left transition ${(userVotedPlan || winningPlan.id) === plan.id
                     ? "border-cyan-400 bg-cyan-950/60 text-white ring-1 ring-cyan-400/60"
                     : "border-zinc-700 bg-zinc-900/70 text-zinc-400 hover:border-cyan-500 hover:text-white"
-                }`}
+                  }`}
               >
                 <span className="font-mono text-[10px] text-cyan-300">{plan.id} 案</span>
                 <span className="mt-1 block text-xs font-bold">{plan.title}</span>
@@ -362,11 +359,10 @@ export const VotingChamber: React.FC<VotingChamberProps> = ({
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setVerdictTab("red_header")}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
-                  verdictTab === "red_header"
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${verdictTab === "red_header"
                     ? "bg-[#cf1919] text-white shadow-[0_0_15px_rgba(207,25,25,0.4)]"
                     : "text-zinc-400 hover:text-white"
-                }`}
+                  }`}
               >
                 <FileText className="h-3.5 w-3.5" />
                 <span>正式红头文件（终局公文）</span>
@@ -374,11 +370,10 @@ export const VotingChamber: React.FC<VotingChamberProps> = ({
 
               <button
                 onClick={() => setVerdictTab("cyber")}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
-                  verdictTab === "cyber"
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${verdictTab === "cyber"
                     ? "bg-cyan-600 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)]"
                     : "text-zinc-400 hover:text-white"
-                }`}
+                  }`}
               >
                 <Zap className="h-3.5 w-3.5" />
                 <span>赛博通报令（二次元）</span>

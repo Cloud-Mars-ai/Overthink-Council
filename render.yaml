@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: overthink-council
+    runtime: node
+    plan: free
+    region: oregon
+    branch: master
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/council/health
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: TRUST_PROXY_HEADERS
+        value: "true"
+      - key: PORT
+        value: 10000
+      # AI 密钥配置（可选：如果在服务端配置，则所有访问者默认可用；也可以不配，访问者在前端自行填写）
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_BASE_URL
+        sync: false
+      - key: OPENAI_MODEL
+        sync: false
